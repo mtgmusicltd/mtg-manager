@@ -1,7 +1,7 @@
 {
   "name": "mtg-manager",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "main": "electron/main.cjs",
   "description": "MTG Harmonizer Software Manager",
@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "axios": "^1.18.1",
+    "electron-updater": "^6.3.9",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
@@ -47,45 +48,29 @@
     },
     "files": [
       "dist/**/*",
-      "electron/**/*"
+      "electron/**/*",
+      "node_modules/electron-updater/**/*"
     ],
     "mac": {
       "category": "public.app-category.music",
       "icon": "build-assets/icon.icns",
       "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
-        }
+        { "target": "zip", "arch": ["arm64"] },
+        { "target": "zip", "arch": ["x64"] },
+        { "target": "pkg", "arch": ["arm64"] },
+        { "target": "pkg", "arch": ["x64"] }
       ],
       "darkModeSupport": true,
-      "minimumSystemVersion": "10.15.0",
-      "hardenedRuntime": false,
+      "minimumSystemVersion": "13.0.0",
+      "hardenedRuntime": true,
       "gatekeeperAssess": false,
+      "entitlements": "build-assets/entitlements.mac.plist",
+      "entitlementsInherit": "build-assets/entitlements.mac.plist",
       "identity": null
     },
-    "dmg": {
-      "title": "MTG Manager",
-      "window": {
-        "width": 540,
-        "height": 380
-      },
-      "contents": [
-        {
-          "x": 150,
-          "y": 185,
-          "type": "file"
-        },
-        {
-          "x": 390,
-          "y": 185,
-          "type": "link",
-          "path": "/Applications"
-        }
-      ]
+    "publish": {
+      "provider": "generic",
+      "url": "https://mtg-licensing-api-production.up.railway.app/updates/"
     }
   }
 }
