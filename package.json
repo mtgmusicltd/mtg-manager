@@ -11,9 +11,11 @@
     "build": "tsc -b && vite build",
     "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "electron:build": "vite build && electron-builder",
-    "electron:build:mac": "vite build && electron-builder --mac --arm64 && electron-builder --mac --x64",
-    "electron:build:mac:arm64": "vite build && electron-builder --mac --arm64",
-    "electron:build:mac:x64": "electron-builder --mac --x64",
+    "electron:build:mac": "pnpm run electron:build:mac:zip:arm64 && pnpm run electron:build:mac:zip:x64 && pnpm run electron:build:mac:pkg:arm64 && pnpm run electron:build:mac:pkg:x64",
+    "electron:build:mac:zip:arm64": "vite build && electron-builder --mac --arm64 --config.mac.target.0.target=zip --config.mac.target.0.arch.0=arm64",
+    "electron:build:mac:zip:x64": "electron-builder --mac --x64 --config.mac.target.0.target=zip --config.mac.target.0.arch.0=x64",
+    "electron:build:mac:pkg:arm64": "electron-builder --mac --arm64 --config.mac.target.0.target=pkg --config.mac.target.0.arch.0=arm64",
+    "electron:build:mac:pkg:x64": "electron-builder --mac --x64 --config.mac.target.0.target=pkg --config.mac.target.0.arch.0=x64",
     "electron:build:win": "vite build && electron-builder --win",
     "electron:build:all": "vite build && electron-builder --mac --win",
     "lint": "oxlint",
@@ -57,10 +59,7 @@
       "category": "public.app-category.music",
       "icon": "build-assets/icon.icns",
       "target": [
-        { "target": "zip", "arch": ["arm64"] },
-        { "target": "zip", "arch": ["x64"] },
-        { "target": "pkg", "arch": ["arm64"] },
-        { "target": "pkg", "arch": ["x64"] }
+        { "target": "zip", "arch": ["arm64"] }
       ],
       "darkModeSupport": true,
       "minimumSystemVersion": "13.0.0",
