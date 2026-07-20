@@ -11,7 +11,9 @@
     "build": "tsc -b && vite build",
     "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "electron:build": "vite build && electron-builder",
-    "electron:build:mac": "vite build && electron-builder --mac",
+    "electron:build:mac": "vite build && electron-builder --mac --arm64 && electron-builder --mac --x64",
+    "electron:build:mac:arm64": "vite build && electron-builder --mac --arm64",
+    "electron:build:mac:x64": "electron-builder --mac --x64",
     "electron:build:win": "vite build && electron-builder --win",
     "electron:build:all": "vite build && electron-builder --mac --win",
     "lint": "oxlint",
@@ -67,6 +69,9 @@
       "entitlements": "build-assets/entitlements.mac.plist",
       "entitlementsInherit": "build-assets/entitlements.mac.plist",
       "identity": null
+    },
+    "pkg": {
+      "identity": "Developer ID Installer: MTG Music Ltd (Y8DUR246JM)"
     },
     "publish": {
       "provider": "generic",
