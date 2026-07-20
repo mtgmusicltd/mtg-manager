@@ -1,0 +1,30 @@
+{
+  "appId": "com.mtg.manager",
+  "productName": "MTG Manager",
+  "copyright": "Copyright © 2025 MTG Music Ltd",
+  "directories": {
+    "output": "dist-electron",
+    "buildResources": "build-assets"
+  },
+  "files": [
+    "dist/**/*",
+    "electron/**/*",
+    "node_modules/electron-updater/**/*"
+  ],
+  "mac": {
+    "category": "public.app-category.music",
+    "icon": "build-assets/icon.icns",
+    "target": [{ "target": "zip", "arch": ["x64"] }],
+    "darkModeSupport": true,
+    "minimumSystemVersion": "13.0.0",
+    "hardenedRuntime": true,
+    "gatekeeperAssess": false,
+    "entitlements": "build-assets/entitlements.mac.plist",
+    "entitlementsInherit": "build-assets/entitlements.mac.plist",
+    "identity": null
+  },
+  "publish": {
+    "provider": "generic",
+    "url": "https://mtg-licensing-api-production.up.railway.app/updates/"
+  }
+}
