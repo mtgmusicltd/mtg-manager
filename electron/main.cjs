@@ -1,5 +1,6 @@
 'use strict'
 const { app, BrowserWindow, ipcMain, dialog } = require('electron')
+const { autoUpdater } = require('electron-updater')
 const path = require('path')
 const fs = require('fs')
 const os = require('os')
@@ -713,7 +714,29 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(createWindow)
+app.whenReady().then(() => {
+  createWindow()
+  // Check for updates 3 seconds after launch (production only)
+  if (!isDev) {
+    setTimeout(() => {
+      autoUpdater.checkForUpdates().catch(() => {})
+    }, 3000)
+  }
+})
+
+autoUpdater.on('update-downloaded', () => {
+  dialog.showMessageBox({
+    type: 'info',
+    title: 'Update Ready',
+    message: 'A new version of MTG Manager has been downloaded.',
+    detail: 'Restart now to apply the update, or continue and it will be applied next time you launch.',
+    buttons: ['Restart Now', 'Later'],
+    defaultId: 0,
+    cancelId: 1,
+  }).then(({ response }) => {
+    if (response === 0) autoUpdater.quitAndInstall()
+  })
+})
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
