@@ -12,7 +12,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   writePresets: (data) => ipcRenderer.invoke('write-presets', data),
   exportPresets: (data) => ipcRenderer.invoke('export-presets', data),
   importPresets: () => ipcRenderer.invoke('import-presets'),
-  writeFirmware: (payload) => ipcRenderer.invoke('write-firmware', payload),
   detectBootloader: () => ipcRenderer.invoke('detect-bootloader'),
   flashFirmware: (payload) => ipcRenderer.invoke('flash-firmware', payload),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
@@ -29,5 +28,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = (_, data) => callback(data)
     ipcRenderer.on('flash-progress', handler)
     return () => ipcRenderer.removeListener('flash-progress', handler)
+  },
+  // Auto-update notification from main process
+  onUpdateAvailable: (callback) => {
+    const handler = () => callback()
+    ipcRenderer.on('app-update-available', handler)
+    return () => ipcRenderer.removeListener('app-update-available', handler)
   },
 })

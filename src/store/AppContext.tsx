@@ -77,6 +77,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     init()
   }, [])
 
+  // ── Auto-update badge ────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!window.electronAPI?.onUpdateAvailable) return
+    const unsub = window.electronAPI.onUpdateAvailable(() => {
+      setUpdateBadge(true)
+    })
+    return unsub
+  }, [])
+
   // ── Device polling ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (licenceState !== 'licensed') return

@@ -26,7 +26,6 @@ function apiRequest(method, endpoint, body) {
         'Accept': 'application/json',
         ...(payload ? { 'Content-Length': Buffer.byteLength(payload) } : {}),
       },
-      rejectUnauthorized: false,
     }
     const req = https.request(options, (res) => {
       let data = ''
@@ -62,7 +61,6 @@ function downloadBinary(url) {
       hostname: parsedUrl.hostname,
       path: parsedUrl.pathname + parsedUrl.search,
       method: 'GET',
-      rejectUnauthorized: false,
     }
     const req = client.request(options, (res) => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
@@ -96,7 +94,6 @@ function apiCompile(key, version, uid) {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(payload),
       },
-      rejectUnauthorized: false,
     }
     const req = https.request(options, (res) => {
       const chunks = []
@@ -445,9 +442,11 @@ ipcMain.handle('flash-firmware', async (_, { buffer, fileName }) => {
 
 ipcMain.handle('get-app-version', () => app.getVersion())
 
+// FIX: was calling /api/admin/deactivate (requires admin token — always 401).
+// Now correctly calls the public /api/deactivate endpoint.
 ipcMain.handle('api-deactivate', async (_, { key, machineId }) => {
   try {
-    const data = await apiRequest('POST', '/api/admin/deactivate', { key, machine_id: machineId })
+    const data = await apiRequest('POST', '/api/deactivate', { key, machine_id: machineId })
     return { success: true, data }
   } catch (err) {
     if (err.status === 404) return { success: true, data: { message: 'Already deactivated' } }
@@ -504,7 +503,6 @@ function streamBinaryToFile(url, destPath, onProgress) {
       hostname: parsedUrl.hostname,
       path: parsedUrl.pathname + parsedUrl.search,
       method: 'GET',
-      rejectUnauthorized: false,
     }
     const req = client.request(options, (res) => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
@@ -712,30 +710,43 @@ function createWindow() {
   } else {
     win.loadFile(path.join(__dirname, '../dist/index.html'))
   }
+
+  return win
 }
 
 app.whenReady().then(() => {
-  createWindow()
-  // Check for updates 3 seconds after launch (production only)
+  const win = createWindow()
+
+  // ─── Auto-updater (production only) ────────────────────────────────────────
   if (!isDev) {
+    // Notify the renderer so the Updates tab badge lights up
+    autoUpdater.on('update-available', () => {
+      win.webContents.send('app-update-available')
+    })
+
+    // Show a native dialog once the download has completed silently
+    autoUpdater.on('update-downloaded', () => {
+      dialog.showMessageBox(win, {
+        type: 'info',
+        title: 'Update Ready',
+        message: 'A new version of MTG Manager has been downloaded.',
+        detail: 'Restart now to apply the update, or continue and it will be applied next time you launch.',
+        buttons: ['Restart Now', 'Later'],
+        defaultId: 0,
+        cancelId: 1,
+      }).then(({ response }) => {
+        if (response === 0) autoUpdater.quitAndInstall()
+      })
+    })
+
+    autoUpdater.on('error', (err) => {
+      console.error('[AUTO-UPDATE] Error:', err.message)
+    })
+
     setTimeout(() => {
-      autoUpdater.checkForUpdates().catch(() => {})
+      autoUpdater.checkForUpdatesAndNotify().catch(() => {})
     }, 3000)
   }
-})
-
-autoUpdater.on('update-downloaded', () => {
-  dialog.showMessageBox({
-    type: 'info',
-    title: 'Update Ready',
-    message: 'A new version of MTG Manager has been downloaded.',
-    detail: 'Restart now to apply the update, or continue and it will be applied next time you launch.',
-    buttons: ['Restart Now', 'Later'],
-    defaultId: 0,
-    cancelId: 1,
-  }).then(({ response }) => {
-    if (response === 0) autoUpdater.quitAndInstall()
-  })
 })
 
 app.on('window-all-closed', () => {

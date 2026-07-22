@@ -60,7 +60,6 @@ declare global {
       writePresets(data: PresetsJson): Promise<ApiResult>
       exportPresets(data: PresetsJson): Promise<ApiResult>
       importPresets(): Promise<ApiResult<PresetsJson>>
-      writeFirmware(payload: { buffer: ArrayBuffer; fileName: string }): Promise<ApiResult>
       detectBootloader(): Promise<DeviceStatus>
       flashFirmware(payload: { buffer: string; fileName: string }): Promise<ApiResult>
       getAppVersion(): Promise<string>
@@ -73,6 +72,7 @@ declare global {
       // Streaming download + flash
       downloadAndFlash(key: string, version: string): Promise<IpcApiResult>
       onFlashProgress(callback: (progress: { stage: string; percent: number; message: string }) => void): (() => void) | undefined
+      onUpdateAvailable(callback: () => void): (() => void) | undefined
     }
   }
 }
