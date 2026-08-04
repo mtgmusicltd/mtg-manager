@@ -71,6 +71,7 @@ declare global {
       downloadAndFlash(key: string, version: string): Promise<IpcApiResult>
       onFlashProgress(callback: (progress: { stage: string; percent: number; message: string }) => void): (() => void) | undefined
       onUpdateAvailable(callback: () => void): (() => void) | undefined
+      onLog(callback: (msg: string) => void): (() => void) | undefined
     }
   }
 }

@@ -86,6 +86,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return unsub
   }, [])
 
+  // ── Debug log forwarding from main process ──────────────────────────────────
+  useEffect(() => {
+    if (!window.electronAPI?.onLog) return
+    const unsub = window.electronAPI.onLog((msg: string) => {
+      console.log(msg)
+    })
+    return unsub
+  }, [])
+
   // ── Device polling ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (licenceState !== 'licensed') return

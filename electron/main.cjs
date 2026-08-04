@@ -742,8 +742,23 @@ app.whenReady().then(() => {
 
   // ─── Auto-updater (production only) ────────────────────────────────────────
   if (!isDev) {
+    // Verbose logging for debugging
+    autoUpdater.on('checking-for-update', () => {
+      console.log('[AUTO-UPDATE] Checking for update...')
+      win.webContents.send('log', '[AUTO-UPDATE] Checking for update...')
+    })
+    autoUpdater.on('update-not-available', (info) => {
+      console.log('[AUTO-UPDATE] Update not available:', info.version)
+      win.webContents.send('log', `[AUTO-UPDATE] Up to date (${info.version})`)
+    })
+    autoUpdater.on('download-progress', (p) => {
+      console.log(`[AUTO-UPDATE] Download progress: ${Math.round(p.percent)}%`)
+    })
+
     // Notify the renderer so the Updates tab badge lights up
-    autoUpdater.on('update-available', () => {
+    autoUpdater.on('update-available', (info) => {
+      console.log('[AUTO-UPDATE] Update available:', info.version)
+      win.webContents.send('log', `[AUTO-UPDATE] Update available: ${info.version}`)
       win.webContents.send('app-update-available')
     })
 
@@ -764,10 +779,14 @@ app.whenReady().then(() => {
 
     autoUpdater.on('error', (err) => {
       console.error('[AUTO-UPDATE] Error:', err.message)
+      win.webContents.send('log', `[AUTO-UPDATE] Error: ${err.message}`)
     })
 
     setTimeout(() => {
-      autoUpdater.checkForUpdatesAndNotify().catch(() => {})
+      autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+        console.error('[AUTO-UPDATE] checkForUpdatesAndNotify failed:', err.message)
+        win.webContents.send('log', `[AUTO-UPDATE] Check failed: ${err.message}`)
+      })
     }, 3000)
   }
 })

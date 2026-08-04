@@ -35,4 +35,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('app-update-available', handler)
     return () => ipcRenderer.removeListener('app-update-available', handler)
   },
+  // Debug log forwarding from main process
+  onLog: (callback) => {
+    const handler = (_, msg) => callback(msg)
+    ipcRenderer.on('log', handler)
+    return () => ipcRenderer.removeListener('log', handler)
+  },
 })
