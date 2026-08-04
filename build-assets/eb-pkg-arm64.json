@@ -21,10 +21,10 @@
     "gatekeeperAssess": false,
     "entitlements": "build-assets/entitlements.mac.plist",
     "entitlementsInherit": "build-assets/entitlements.mac.plist",
-    "identity": null
+    "identity": "FE8DC59AE672F19A8BA996F34566E033FFF12627"
   },
   "pkg": {
-    "identity": "MTG Music Ltd (Y8DUR246JM)"
+    "identity": "MTG Music LTD (Y8DUR246JM)"
   },
   "publish": {
     "provider": "generic",

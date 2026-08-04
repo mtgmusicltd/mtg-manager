@@ -21,7 +21,7 @@
     "gatekeeperAssess": false,
     "entitlements": "build-assets/entitlements.mac.plist",
     "entitlementsInherit": "build-assets/entitlements.mac.plist",
-    "identity": null
+    "identity": "FE8DC59AE672F19A8BA996F34566E033FFF12627"
   },
   "publish": {
     "provider": "generic",
