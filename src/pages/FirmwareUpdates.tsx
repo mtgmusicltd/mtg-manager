@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useApp } from '../store/AppContext'
 
-const APP_VERSION = '1.0.0'
-
 function semverGt(a: string, b: string): boolean {
   const pa = a.split('.').map(Number)
   const pb = b.split('.').map(Number)
@@ -154,9 +152,6 @@ export default function FirmwareUpdates() {
           <h1 className="text-2xl font-black mb-1" style={{ fontFamily: 'Barlow, sans-serif', color: '#e8e8f0' }}>
             Firmware Updates
           </h1>
-          <p className="text-sm" style={{ color: '#7070a0' }}>
-            Current app version: <span style={{ color: '#C8D300' }}>v{APP_VERSION}</span>
-          </p>
         </div>
 
         {/* Device status indicator */}

@@ -186,9 +186,6 @@ export default function LicenceSplash() {
         </div>
       )}
 
-      <p className="text-xs mt-8" style={{ color: '#454570' }}>
-        MTG Manager v1.0.0
-      </p>
     </div>
   )
 }
