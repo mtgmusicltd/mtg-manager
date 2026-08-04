@@ -354,7 +354,28 @@ ipcMain.handle('read-presets', () => {
   const presetsPath = path.join(drivePath, 'presets.json')
   try {
     const raw = fs.readFileSync(presetsPath, 'utf-8')
-    return { success: true, data: JSON.parse(raw) }
+    const data = JSON.parse(raw)
+
+    // ── Migration: old format had { hx: [...], ableton: [...], lpx: [...] }
+    // Flatten to new format { presets: [...] } using the hx bank as the source
+    // of truth (hx and mtg modes share the same intervals).
+    if (!Array.isArray(data.presets) && (Array.isArray(data.hx) || Array.isArray(data.ableton) || Array.isArray(data.lpx))) {
+      const merged = [...(data.hx || []), ...(data.ableton || []), ...(data.lpx || [])]
+      // De-duplicate by name, keeping first occurrence
+      const seen = new Set()
+      const deduped = merged.filter(p => {
+        if (seen.has(p.name)) return false
+        seen.add(p.name)
+        return true
+      })
+      data.presets = deduped.length > 0 ? deduped : data.hx || []
+      delete data.hx
+      delete data.ableton
+      delete data.lpx
+      console.log('[PRESETS] Migrated old 3-bank format to flat presets array:', data.presets.length, 'presets')
+    }
+
+    return { success: true, data }
   } catch (e) {
     return { success: false, error: e.message }
   }

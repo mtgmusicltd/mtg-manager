@@ -7,13 +7,8 @@ import type { Preset } from '../types/electron'
 const KEY_ORDER = [2, 5, 8, 11, 1, 4, 7, 10, 0, 3, 6, 9]
 // KEY_ORDER[visual_position] = hardware_key_number
 
-type BankId = 'hx' | 'ableton' | 'lpx'
-
-const BANKS: { id: BankId; label: string; fullLabel: string; min: number; max: number }[] = [
-  { id: 'hx',      label: 'HX Stomp',    fullLabel: 'HX Stomp',    min: -24, max: 24 },
-  { id: 'ableton', label: 'Ableton Live', fullLabel: 'Ableton Live', min: -24, max: 24 },
-  { id: 'lpx',     label: 'Logic Pro X',  fullLabel: 'Logic Pro X',  min: -12, max: 12 },
-]
+const VOICE_MIN = -24
+const VOICE_MAX = 24
 
 const VOICE_LABELS = ['A', 'B', 'C', 'D']
 
@@ -97,6 +92,46 @@ function KeyTile({ visualPos, voices, selected, onClick }: KeyTileProps) {
   )
 }
 
+// ─── Voice input with local string state (fixes "05" bug and minus key bug) ──
+
+interface VoiceInputProps {
+  value: number
+  onChange: (v: number) => void
+}
+
+function VoiceInput({ value, onChange }: VoiceInputProps) {
+  const [localValue, setLocalValue] = useState(String(value))
+
+  // Sync when external value changes (e.g. +/- buttons or clear)
+  useEffect(() => {
+    setLocalValue(String(value))
+  }, [value])
+
+  function commit(raw: string) {
+    const parsed = parseInt(raw, 10)
+    const clamped = isNaN(parsed) ? 0 : clamp(parsed, VOICE_MIN, VOICE_MAX)
+    onChange(clamped)
+    setLocalValue(String(clamped))
+  }
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={localValue}
+      onChange={e => setLocalValue(e.target.value)}
+      onBlur={e => commit(e.target.value)}
+      onKeyDown={e => { if (e.key === 'Enter') commit((e.target as HTMLInputElement).value) }}
+      className="flex-1 text-center rounded-lg py-1.5 text-sm font-mono outline-none"
+      style={{
+        background: '#0C0B25',
+        border: `1px solid ${value !== 0 ? '#252450' : '#1a1940'}`,
+        color: value !== 0 ? '#C8D300' : '#454570',
+      }}
+    />
+  )
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function PresetEditor() {
@@ -105,7 +140,6 @@ export default function PresetEditor() {
     savePresetsToDevice, hasUnsavedChanges,
   } = useApp()
 
-  const [selectedBank, setSelectedBank] = useState<BankId>('hx')
   const [selectedPresetIdx, setSelectedPresetIdx] = useState(0)
   const [selectedKeyVisPos, setSelectedKeyVisPos] = useState<number | null>(null)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
@@ -114,34 +148,31 @@ export default function PresetEditor() {
   const [renameValue, setRenameValue] = useState('')
   const [showEncoderSettings, setShowEncoderSettings] = useState(false)
 
-  const bank = BANKS.find(b => b.id === selectedBank)!
-  const bankPresets: Preset[] = presets?.[selectedBank] ?? []
-  const currentPreset: Preset | null = bankPresets[selectedPresetIdx] ?? null
+  const allPresets: Preset[] = presets?.presets ?? []
+  const currentPreset: Preset | null = allPresets[selectedPresetIdx] ?? null
 
-  // Reset selected key when switching bank or preset
+  // Reset selected key when switching preset
   useEffect(() => {
     setSelectedKeyVisPos(null)
-  }, [selectedBank, selectedPresetIdx])
+  }, [selectedPresetIdx])
 
-  // Clamp preset index when bank changes
+  // Clamp preset index when preset list changes
   useEffect(() => {
-    if (selectedPresetIdx >= bankPresets.length) {
-      setSelectedPresetIdx(Math.max(0, bankPresets.length - 1))
+    if (selectedPresetIdx >= allPresets.length) {
+      setSelectedPresetIdx(Math.max(0, allPresets.length - 1))
     }
-  }, [selectedBank, bankPresets.length])
+  }, [allPresets.length])
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
 
   function updatePreset(updater: (p: Preset) => Preset) {
     if (!presets || !currentPreset) return
-    const newBank = [...bankPresets]
-    newBank[selectedPresetIdx] = updater({ ...currentPreset })
-    setPresets({ ...presets, [selectedBank]: newBank })
+    const newPresets = [...allPresets]
+    newPresets[selectedPresetIdx] = updater({ ...currentPreset })
+    setPresets({ ...presets, presets: newPresets })
   }
 
-  function setVoice(hwKey: number, voiceIdx: number, raw: string) {
-    const parsed = parseInt(raw, 10)
-    const value = isNaN(parsed) ? 0 : clamp(parsed, bank.min, bank.max)
+  function setVoice(hwKey: number, voiceIdx: number, value: number) {
     updatePreset(p => {
       const voices = [...(p.keys[String(hwKey)] ?? [0, 0, 0, 0])] as [number, number, number, number]
       voices[voiceIdx] = value
@@ -149,18 +180,29 @@ export default function PresetEditor() {
     })
   }
 
+  function clearAllVoices(hwKey: number) {
+    // Single updatePreset call to reset all four voices atomically
+    updatePreset(p => ({
+      ...p,
+      keys: {
+        ...p.keys,
+        [String(hwKey)]: [0, 0, 0, 0],
+      },
+    }))
+  }
+
   function addPreset() {
     if (!presets) return
     const newPreset = makeEmptyPreset()
-    const newBank = [...bankPresets, newPreset]
-    setPresets({ ...presets, [selectedBank]: newBank })
-    setSelectedPresetIdx(newBank.length - 1)
+    const newList = [...allPresets, newPreset]
+    setPresets({ ...presets, presets: newList })
+    setSelectedPresetIdx(newList.length - 1)
   }
 
   function deletePreset() {
-    if (!presets || bankPresets.length <= 1) return
-    const newBank = bankPresets.filter((_, i) => i !== selectedPresetIdx)
-    setPresets({ ...presets, [selectedBank]: newBank })
+    if (!presets || allPresets.length <= 1) return
+    const newList = allPresets.filter((_, i) => i !== selectedPresetIdx)
+    setPresets({ ...presets, presets: newList })
     setSelectedPresetIdx(Math.max(0, selectedPresetIdx - 1))
   }
 
@@ -303,31 +345,6 @@ export default function PresetEditor() {
         className="flex items-center gap-3 px-6 py-3 shrink-0"
         style={{ borderBottom: '1px solid #1a1940' }}
       >
-        {/* Bank selector */}
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#7070a0', fontFamily: 'Barlow, sans-serif' }}>
-            Bank
-          </label>
-          <select
-            value={selectedBank}
-            onChange={e => { setSelectedBank(e.target.value as BankId); setSelectedPresetIdx(0) }}
-            className="rounded-lg px-3 py-1.5 text-sm font-semibold outline-none"
-            style={{
-              background: '#13122e',
-              border: '1px solid #252450',
-              color: '#C8D300',
-              fontFamily: 'Barlow, sans-serif',
-              cursor: 'pointer',
-            }}
-          >
-            {BANKS.map(b => (
-              <option key={b.id} value={b.id}>{b.fullLabel}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="w-px h-5" style={{ background: '#252450' }} />
-
         {/* Preset selector */}
         <div className="flex items-center gap-2">
           <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#7070a0', fontFamily: 'Barlow, sans-serif' }}>
@@ -346,7 +363,7 @@ export default function PresetEditor() {
               minWidth: 160,
             }}
           >
-            {bankPresets.map((p, i) => (
+            {allPresets.map((p, i) => (
               <option key={i} value={i}>{p.name}</option>
             ))}
           </select>
@@ -371,14 +388,14 @@ export default function PresetEditor() {
         </button>
         <button
           onClick={deletePreset}
-          disabled={bankPresets.length <= 1}
+          disabled={allPresets.length <= 1}
           title="Delete preset"
           className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
           style={{
             background: '#13122e',
             border: '1px solid #252450',
-            color: bankPresets.length <= 1 ? '#333360' : '#e05252',
-            cursor: bankPresets.length <= 1 ? 'not-allowed' : 'pointer',
+            color: allPresets.length <= 1 ? '#333360' : '#e05252',
+            cursor: allPresets.length <= 1 ? 'not-allowed' : 'pointer',
             fontFamily: 'Barlow, sans-serif',
           }}
         >
@@ -415,7 +432,7 @@ export default function PresetEditor() {
             cursor: hasUnsavedChanges && saveStatus !== 'saving' ? 'pointer' : 'not-allowed',
           }}
         >
-          {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? '✓ Saved' : 'Save to Device'}
+          {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? '✓ Saved' : 'Save to Device'}
         </button>
       </div>
 
@@ -466,11 +483,11 @@ export default function PresetEditor() {
               {currentPreset?.name ?? '—'}
             </span>
             <span className="text-xs px-2 py-0.5 rounded" style={{ background: '#1a1940', color: '#7070a0', fontFamily: 'Barlow, sans-serif' }}>
-              {bank.fullLabel} · Range {bank.min} to +{bank.max}
+              Range {VOICE_MIN} to +{VOICE_MAX}
             </span>
           </div>
 
-          {/* 4-col × 3-row grid */}
+          {/* 4-col x 3-row grid */}
           <div
             className="grid gap-2"
             style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', width: '100%', maxWidth: 560 }}
@@ -524,31 +541,20 @@ export default function PresetEditor() {
                     <div className="flex-1 flex items-center gap-2">
                       <button
                         onClick={() => {
-                          const cur = selectedVoices[i]
-                          const next = clamp(cur - 1, bank.min, bank.max)
-                          setVoice(selectedHwKey, i, String(next))
+                          const next = clamp(selectedVoices[i] - 1, VOICE_MIN, VOICE_MAX)
+                          setVoice(selectedHwKey, i, next)
                         }}
                         className="w-7 h-7 rounded flex items-center justify-center text-sm font-bold transition-all"
                         style={{ background: '#1a1940', color: '#7070a0', cursor: 'pointer', border: '1px solid #252450' }}
-                      >−</button>
-                      <input
-                        type="number"
+                      >-</button>
+                      <VoiceInput
                         value={selectedVoices[i]}
-                        min={bank.min}
-                        max={bank.max}
-                        onChange={e => setVoice(selectedHwKey, i, e.target.value)}
-                        className="flex-1 text-center rounded-lg py-1.5 text-sm font-mono outline-none"
-                        style={{
-                          background: '#0C0B25',
-                          border: `1px solid ${selectedVoices[i] !== 0 ? '#252450' : '#1a1940'}`,
-                          color: selectedVoices[i] !== 0 ? '#C8D300' : '#454570',
-                        }}
+                        onChange={v => setVoice(selectedHwKey, i, v)}
                       />
                       <button
                         onClick={() => {
-                          const cur = selectedVoices[i]
-                          const next = clamp(cur + 1, bank.min, bank.max)
-                          setVoice(selectedHwKey, i, String(next))
+                          const next = clamp(selectedVoices[i] + 1, VOICE_MIN, VOICE_MAX)
+                          setVoice(selectedHwKey, i, next)
                         }}
                         className="w-7 h-7 rounded flex items-center justify-center text-sm font-bold transition-all"
                         style={{ background: '#1a1940', color: '#7070a0', cursor: 'pointer', border: '1px solid #252450' }}
@@ -559,16 +565,14 @@ export default function PresetEditor() {
 
                 <div className="mt-2 pt-3" style={{ borderTop: '1px solid #1a1940' }}>
                   <p className="text-xs" style={{ color: '#454570' }}>
-                    Range: <span style={{ color: '#7070a0' }}>{bank.min} to +{bank.max}</span> semitones
+                    Range: <span style={{ color: '#7070a0' }}>{VOICE_MIN} to +{VOICE_MAX}</span> semitones
                     <br />
                     0 = voice inactive / bypassed
                   </p>
                 </div>
 
                 <button
-                  onClick={() => {
-                    for (let i = 0; i < 4; i++) setVoice(selectedHwKey, i, '0')
-                  }}
+                  onClick={() => clearAllVoices(selectedHwKey)}
                   className="mt-1 px-3 py-1.5 rounded-lg text-xs font-semibold w-full"
                   style={{ background: '#1a1940', border: '1px solid #252450', color: '#7070a0', cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}
                 >
@@ -621,7 +625,7 @@ export default function PresetEditor() {
                   {/* Encoder Value */}
                   <div>
                     <label className="text-xs mb-1 block" style={{ color: '#7070a0', fontFamily: 'Barlow, sans-serif' }}>
-                      Encoder Value (0–127)
+                      Encoder Value (0-127)
                     </label>
                     <input
                       type="number"
@@ -636,7 +640,7 @@ export default function PresetEditor() {
                   {/* Encoder Sensitivity */}
                   <div>
                     <label className="text-xs mb-1 block" style={{ color: '#7070a0', fontFamily: 'Barlow, sans-serif' }}>
-                      Encoder Sensitivity (1–5)
+                      Encoder Sensitivity (1-5)
                     </label>
                     <input
                       type="number"

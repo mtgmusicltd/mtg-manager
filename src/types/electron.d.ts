@@ -1,9 +1,7 @@
 export interface PresetsJson {
   mode: string
   preset_index: number
-  hx: Preset[]
-  ableton: Preset[]
-  lpx: Preset[]
+  presets: Preset[]
 }
 
 export interface Preset {
