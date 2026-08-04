@@ -696,8 +696,10 @@ ipcMain.handle('download-and-flash', async (event, { key, version }) => {
     fs.writeFileSync(path.join(targetPath, 'code.py'), 'import main\n')
     fs.writeFileSync(path.join(targetPath, 'main.mpy'), mpyBuffer)
 
-    // Clean up any old files that shouldn't be there
-    try { fs.unlinkSync(path.join(targetPath, 'boot.py')) } catch {}
+    // Clean up any old files that shouldn't be there.
+    // NOTE: boot.py must NOT be deleted -- it is required to remount CIRCUITPY
+    // as writable on startup, fixing the [Errno 30] read-only filesystem bug.
+    // The firmware zip ships boot.py; removing it here would silently break saves.
     try { fs.unlinkSync(path.join(targetPath, 'code.mpy')) } catch {}
 
     sendProgress('done', 100, 'Installation complete! Unplug and replug your device to start the harmonizer.')
