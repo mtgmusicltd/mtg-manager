@@ -35,13 +35,20 @@ export default function FirmwareUpdates() {
   const [flashStates, setFlashStates] = useState<Record<string, FlashStage>>({})
   const [flashErrors, setFlashErrors] = useState<Record<string, string>>({})
   const [flashProgress, setFlashProgress] = useState<Record<string, FlashProgress>>({})
+  const [appVersion, setAppVersion] = useState('0.0.0')
 
   // Drive detection — poll both RPI-RP2 (bootloader) and CIRCUITPY (normal mode)
   const [bootloaderConnected, setBootloaderConnected] = useState(false)
   const { deviceConnected } = useApp() // CIRCUITPY = normal mode
 
+  // Load app version from Electron
+  useEffect(() => {
+    if (!window.electronAPI) return
+    window.electronAPI.getAppVersion().then(setAppVersion)
+  }, [])
+
   const latestVersion = versions[0] ?? null
-  const hasUpdate = latestVersion ? semverGt(latestVersion.version, APP_VERSION) : false
+  const hasUpdate = latestVersion ? semverGt(latestVersion.version, appVersion) : false
 
   // Poll for RPI-RP2 bootloader drive every 2 seconds
   useEffect(() => {
@@ -99,7 +106,7 @@ export default function FirmwareUpdates() {
         return 0
       })
       setVersions(sorted)
-      if (sorted.length > 0 && semverGt(sorted[0].version, APP_VERSION)) {
+      if (sorted.length > 0 && semverGt(sorted[0].version, appVersion)) {
         setUpdateBadge(true)
       }
       setLoading(false)
