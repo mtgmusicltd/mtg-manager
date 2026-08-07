@@ -314,8 +314,17 @@ function ensureCircuitPyWritable(drivePath) {
     ].join(' ')
 
     execSync(`osascript -e '${script}'`, { timeout: 30000 })
-    circuitpyMounted = true
-    return true
+
+    // Verify the remount actually worked before declaring success
+    try {
+      fs.writeFileSync(testFile, '')
+      fs.unlinkSync(testFile)
+      circuitpyMounted = true
+      return true
+    } catch {
+      console.error('[MOUNT] Remount succeeded but drive is still read-only')
+      return false
+    }
   } catch (e) {
     console.error('[MOUNT] Failed to remount CIRCUITPY as writable:', e.message)
     return false
