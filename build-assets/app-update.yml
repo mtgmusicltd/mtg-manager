@@ -1,0 +1,3 @@
+provider: generic
+url: 'https://mtg-licensing-api-production.up.railway.app/updates/'
+updaterCacheDirName: mtg-manager-updater

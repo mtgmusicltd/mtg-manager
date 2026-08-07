@@ -11,6 +11,9 @@
     "electron/**/*",
     "node_modules/electron-updater/**/*"
   ],
+  "extraResources": [
+    { "from": "build-assets/app-update.yml", "to": "app-update.yml" }
+  ],
   "mac": {
     "category": "public.app-category.music",
     "icon": "build-assets/icon.icns",
