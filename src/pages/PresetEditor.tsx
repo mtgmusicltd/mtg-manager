@@ -405,6 +405,12 @@ export default function PresetEditor() {
         <div className="flex-1" />
 
         {/* Import / Export */}
+        <p
+          className="text-xs text-right shrink-0"
+          style={{ color: '#7070a0', maxWidth: 240, lineHeight: 1.35, fontFamily: 'Barlow, sans-serif' }}
+        >
+          The Harmonizer must be in bootloader mode (double-tap the reset button) before Import can write.
+        </p>
         <button
           onClick={handleImport}
           className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
