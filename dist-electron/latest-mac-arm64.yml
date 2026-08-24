@@ -1,9 +1,0 @@
-version: 1.0.6
-files:
-  - url: MTG Manager-1.0.6-arm64-mac.zip
-    sha512: evRJgYWQLX5x7wsUKVHag8hWHugrQAixVfNeFF62bztcBPqgRr8/tpCGKGe6tTJVmysw4kMh6hVgsLbhMedxVw==
-    size: 119243651
-    blockMapSize: 125592
-path: MTG Manager-1.0.6-arm64-mac.zip
-sha512: evRJgYWQLX5x7wsUKVHag8hWHugrQAixVfNeFF62bztcBPqgRr8/tpCGKGe6tTJVmysw4kMh6hVgsLbhMedxVw==
-releaseDate: '2026-08-07T00:00:00.000Z'

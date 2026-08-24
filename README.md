@@ -26,10 +26,17 @@ pnpm install
 pnpm electron:dev
 ```
 
-### Build for production
+### Build for production (macOS)
 ```bash
-pnpm electron:build
+pnpm electron:build:mac
 ```
+
+This is the only macOS release recipe. It builds both architectures in one ZIP
+invocation, writes both updater manifests, verifies the artefacts before anything
+is signed, and stages the manual-download installers. See `build-assets/README.md`.
+
+Signing, notarisation, upload, updater-manifest replacement, and download-page
+changes are all separate, approval-gated steps. The build performs none of them.
 
 ## Key Design Decisions
 

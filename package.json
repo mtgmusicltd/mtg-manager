@@ -1,7 +1,7 @@
 {
   "name": "mtg-manager",
   "private": true,
-  "version": "1.0.7",
+  "version": "1.0.8",
   "type": "module",
   "main": "electron/main.cjs",
   "description": "MTG Harmonizer Software Manager",
@@ -10,10 +10,12 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron:build": "vite build && electron-builder",
-    "electron:build:mac": "vite build && electron-builder --config build-assets/eb-zip-arm64.json && electron-builder --config build-assets/eb-zip-x64.json && electron-builder --config build-assets/eb-pkg-arm64.json && electron-builder --config build-assets/eb-pkg-x64.json",
+    "electron:build": "pnpm electron:build:mac",
+    "electron:build:mac": "vite build && electron-builder --config build-assets/eb-zip-mac.json && node scripts/write-arm64-manifest.mjs && electron-builder --config build-assets/eb-pkg-arm64.json && electron-builder --config build-assets/eb-pkg-x64.json && node scripts/verify-mac-release.mjs && node scripts/stage-manual-installers.mjs",
+    "release:verify:mac": "node scripts/verify-mac-release.mjs",
+    "release:stage:manual": "node scripts/stage-manual-installers.mjs",
     "electron:build:win": "vite build && electron-builder --win",
-    "electron:build:all": "vite build && electron-builder --mac --win",
+    "electron:build:all": "pnpm electron:build:mac && electron-builder --win",
     "lint": "oxlint",
     "preview": "vite preview"
   },
@@ -50,6 +52,12 @@
       "dist/**/*",
       "electron/**/*",
       "node_modules/electron-updater/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "build-assets/app-update.yml",
+        "to": "app-update.yml"
+      }
     ],
     "mac": {
       "category": "public.app-category.music",
