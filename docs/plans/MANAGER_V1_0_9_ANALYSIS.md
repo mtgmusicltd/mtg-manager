@@ -5,12 +5,15 @@
 **Audience:** Edward Hogben. Jarvis coordinates.  
 **Approval:** Edward still has to approve any later implementation.
 
-This note investigates two 1.0.9 candidates in this repo:
+This note investigates 1.0.9 candidates in this repo only:
 
-1. Preset export / import between two Harmonizers (the reported “imported, including after renaming to `presets.json`, and it did not apply” failure).
-2. Leftover old macOS release process that would make a later *signed* 1.0.8 or 1.0.9 fragile.
+1. Preset export / import between two Harmonizers (failed even after renaming to `presets.json`).
+2. Firmware install failing behind a macOS “allow access” / password prompt.
+3. Leftover old macOS release process that would make a later *signed* 1.0.8 or 1.0.9 fragile.
+4. A candid quality pass: what is efficient, what is poor leftover process, what is unclear.
+5. Firmware version on the device — note only; firmware repo will handle it.
 
-It does **not** ship features, bump the version, sign, notarise, touch the Keychain, upload to R2, change live 1.0.6, edit the public download page, or merge to `master`.
+It does **not** ship features, bump the version, sign, notarise, touch the Keychain, upload to R2, change live 1.0.6, edit the public download page, or merge to `master`. **Do not publish 1.0.8 yet.**
 
 Evidence labels used throughout:
 
@@ -29,10 +32,14 @@ Evidence labels used throughout:
 | This branch is already 1.0.8 and already has the combined-manifest recipe, verifier, and staging script. | **Verified** (`package.json` version `1.0.8`; `pnpm electron:build:mac`; `scripts/verify-mac-release.mjs`; `scripts/stage-manual-installers.mjs`) |
 | Live customers are still on updater 1.0.6. | Given; not re-checked against R2 in this run. |
 | The public download page still serves broken v1.0.1 PKGs (Intel-labelled file is arm64-only). | Given; this PR does not touch that page. |
-| Unsigned 1.0.8 was tested on Edward’s Mac Mini and launched. | Given. |
+| Unsigned 1.0.8 launched on Edward’s Mac Mini and showed 1.0.8. | Given by Edward; version string path is **Verified** (`get-app-version` → Settings and Firmware Updates). |
+| Firmware Download & Install failed with a macOS “allow access” / password prompt to edit the device. | Given by Edward; matches the remount gate in this repo — see §2. |
+| Preset export / import between two Harmonizers failed, including when the file was named `presets.json`. | Given by Edward; see §1. |
+| Firmware version should be visible on the device. | Given; firmware-repo job, not this repo. |
+| Do not publish 1.0.8 yet. | Given. Binding for this run. |
 | 1.0.7 was never published and is retained as evidence. | **Verified** (commit message of `eed1f1d`) |
 
-Out of scope for this note and for any follow-up unless Edward expands it: Shopify, email, licensing-api, plugin repo, signing, R2, publishing, rewriting the updater from scratch.
+Out of scope for this note and for any follow-up unless Edward expands it: Shopify, email, licensing-api, plugin repo, signing, R2, publishing, rewriting the updater from scratch. Stay on `mtg-manager` only.
 
 ---
 
@@ -139,7 +146,7 @@ These are secondary. They do not replace §1.4.
 
 Do not implement these in this PR. Recommended order if Edward approves a later 1.0.9 Manager change:
 
-1. **Make Import mean “apply to this Harmonizer” when a device is connected.** After a successful parse and shape check, write `<CIRCUITPY>/presets.json` through the existing `write-presets` path (same remount / `EROFS` handling as Save). Confirm first: “Replace the presets on the connected Harmonizer?” If the user cancels, leave the editor unchanged. This is the fix that matches the reported intent.
+1. **Make Import mean “apply to this Harmonizer” when a device is connected.** After a successful parse and shape check, write `<CIRCUITPY>/presets.json` through the existing `write-presets` path (same remount / `EROFS` handling as Save). Confirm first: “Replace the presets on the connected Harmonizer?” If the user cancels, leave the editor unchanged. This is the fix that matches the reported intent. Same remount will prompt for macOS access/password — see §2. Do not ship Import-as-apply without that UX, or the second Harmonizer will fail the same way firmware did.
 2. **If Save stays explicit instead of auto-write**, Import must still be unmistakable: show “Imported *N* presets. Click Save to Device to apply them to this Harmonizer.” and keep Save enabled. Silent success is how the current UI fails.
 3. **Surface Import failures** the same way Save already surfaces write failures (banner with the error). Cover cancel, parse error, and “this file has no `presets` array”.
 4. **Reuse the `read-presets` 3-bank migration on Import** so an older export cannot land as an empty editor.
@@ -156,9 +163,71 @@ Firmware-repo follow-ups (not this repo, not this PR):
 
 ---
 
-## 2. Leftover old release process (fragility for a later signed 1.0.8 or 1.0.9)
+## 2. Firmware install: “allow access” / password
 
-### 2.1 What 1.0.8 already fixed
+Edward: unsigned 1.0.8 launched and showed 1.0.8; Download & Install then failed with a macOS prompt to allow access / enter a password to edit the device.
+
+That is not an HTTP download defect. The install handler downloads only after it has a writable `CIRCUITPY`. The failure text in this repo is:
+
+```
+Cannot write to device. Please allow access when prompted.
+```
+
+**Verified** — `electron/main.cjs` `download-and-flash`, immediately after `ensureCircuitPyWritable(targetPath)` returns false. Progress at that moment is still staged as `'download'` with message `'Preparing device...'`. So the UI can honestly look like “the download failed” when the download has not started.
+
+### 2.1 What the remount gate does
+
+`ensureCircuitPyWritable` (same function Save uses):
+
+1. On non-macOS, return true. **Verified.**
+2. If a previous success in this process set `circuitpyMounted`, return true. **Verified.**
+3. Try writing `/Volumes/CIRCUITPY/.mtg_write_test`. If that works, done. **Verified.**
+4. Otherwise run, with a **30 second** timeout:
+
+```
+osascript -e 'do shell script "diskutil unmount … && mount_msdos -o rw …" with administrator privileges'
+```
+
+**Verified.** `with administrator privileges` is a macOS **admin-password** dialog. A cancelled, timed-out, or failed remount returns false and becomes the “allow access” error.
+
+Two different macOS prompts can appear on this path. Edward’s wording covers both; this run cannot tell which one he saw.
+
+| Prompt | Source | Label |
+|---|---|---|
+| “MTG Manager would like to access files on a removable volume” (Allow / Don’t Allow) | TCC. Entitlements grant `files.user-selected.read-write`, not a blanket removable-volume right. `CIRCUITPY` is auto-mounted, not chosen in a file dialog. | **Inferred** |
+| Admin password for `osascript` / `diskutil` | Explicit `with administrator privileges` | **Verified** |
+
+Unsigned 1.0.8 launching and showing 1.0.8 is useful: the version bump and the unsigned package work. It also makes both prompts worse. Gatekeeper / TCC treat an unsigned app as less trusted; the password dialog names a helper script, not “install firmware”. **Inferred.**
+
+If the password dialog sits for more than 30 seconds, `execSync` throws and the install reports the same access error. **Verified** timeout; whether Edward waited that long is **Unverified**.
+
+### 2.2 Why the volume was read-only
+
+If `.mtg_write_test` had succeeded, there would be no password dialog. Edward saw a prompt, so the first write failed. **Inferred.**
+
+This repo’s firmware-install comments say `boot.py` must stay on the device so CircuitPython remounts `CIRCUITPY` writable at boot, “fixing the [Errno 30] read-only filesystem bug.” Manager then *also* remounts from the Mac with admin rights. That is leftover process: two remount strategies, and the host-side one is what customers hit.
+
+| Claim | Label |
+|---|---|
+| Firmware install and Save share this remount. A device that prompts on Download & Install will prompt on the first Save to Device as well. | **Verified** |
+| Devices whose `boot.py` actually remounts writable at boot would skip the password dialog. | **Inferred** from the test-write short-circuit |
+| The Harmonizer Edward used for the firmware attempt did not present a writable `CIRCUITPY` to unsigned Manager. | **Inferred** from the prompt occurring |
+| Why (missing/old `boot.py`, macOS FAT mount, TCC blocking the test write so the code thinks it needs admin) | **Unverified** |
+
+### 2.3 Recommended direction (Edward approval required)
+
+Do not implement here. Do not publish 1.0.8 to “fix” this.
+
+1. **Stop calling the failure a download.** Surface “macOS blocked writing to the Harmonizer” and name the prompt (Allow on removable volumes, or the admin password). The HTTP download is a later step.
+2. **Prefer a writable `CIRCUITPY` from `boot.py`** so Manager does not need `diskutil` + admin. Confirm in the firmware repo which devices already do this. If they do, the leftover host remount is only a fallback and should say so.
+3. **If the host remount stays**, drop the 30 s timeout or show “waiting for the macOS password…” and retry. A timeout that looks like a download error is how this failed on the Mini.
+4. Signing/notarising 1.0.8 will change Gatekeeper tone. It will not remove `with administrator privileges`. Do not treat a signed 1.0.8 as the remount fix.
+
+---
+
+## 3. Leftover old release process (fragility for a later signed 1.0.8 or 1.0.9)
+
+### 3.1 What 1.0.8 already fixed
 
 `eed1f1d` replaced the two single-arch ZIP configs (`eb-zip-arm64.json`, `eb-zip-x64.json`) with one dual-arch ZIP config (`eb-zip-mac.json`). Those two files were the overwrite mechanism: each invocation wrote its own `latest-mac.yml` into `dist-electron/`, and the second clobbered the first. Apple Silicon clients then saw only the Intel ZIP.
 
@@ -176,7 +245,7 @@ The gated recipe is now:
 
 Do **not** recreate `eb-zip-arm64.json` / `eb-zip-x64.json`. Do **not** restore `electron:build:all` to `electron-builder --mac --win`.
 
-### 2.2 What is still leftover
+### 3.2 What is still leftover
 
 The commit message of `eed1f1d` says there is “no ungated macOS build path”. That is true for the **npm scripts**. It is not true for the **default electron-builder config still sitting in `package.json`**.
 
@@ -205,7 +274,7 @@ That is the old four-build shape: four *separate* targets, not one ZIP target wi
 
 The 1.0.8 recipe configs (`eb-zip-mac.json`, `eb-pkg-*.json`) are complete files passed with `--config`. They do not use the leftover four-target list. **Inferred** from those files being self-contained and from the recipe always passing `--config`.
 
-### 2.3 Recommended hardening (later, Edward approval required)
+### 3.3 Recommended hardening (later, Edward approval required)
 
 Do not implement in this PR. Do not recreate the four-build overwrite.
 
@@ -218,7 +287,7 @@ If Edward approves a later docs/recipe-only change on the 1.0.8 line (still not 
 
 ---
 
-## 3. Firmware version on the device (note only)
+## 4. Firmware version on the device (note only)
 
 The Harmonizer does not show its firmware version on the device. That is a later **firmware-repo** job. It is not to be implemented here.
 
@@ -236,12 +305,62 @@ No Manager change is recommended in 1.0.9 for on-device version display.
 
 ---
 
-## 4. What this PR is not
+## 5. Candid quality pass
+
+Stay on Manager. This is judgement on `eed1f1d`, not a rewrite plan.
+
+### Efficient (keep)
+
+- One gated mac recipe that builds both ZIP arches in a single invocation, then verifies before anything looks releasable. That is the correct shape for a later signed 1.0.8 or 1.0.9.
+- Verifier checks payload architecture, not filenames. That is how the public v1.0.1 Intel-labelled-arm64-only defect stays caught.
+- Stager makes the hidden `MTG Manager-*.pkg` → `MTGManager-*.pkg` rename explicit and local.
+- `read-presets` migrates the old 3-bank file so a current device still opens in the editor.
+- Firmware install keeps `boot.py` on purpose. That comment is the right instinct; the leftover is that Manager still remounts from the Mac anyway.
+- Unsigned 1.0.8 launched and displayed 1.0.8. The version bump and the unsigned package path work. Do not republish to “prove” that.
+
+### Poor leftover process (do not recreate; fix only with approval)
+
+- **Import is not apply.** A customer-facing button named Import that never writes the device is leftover editor behaviour, not a transfer feature. Renaming the file to `presets.json` is what a careful user does when the product will not say where the file goes.
+- **`package.json` still carries the four-target overwrite.** The 1.0.8 commit claimed there is no ungated macOS path. That is true for `pnpm electron:build:mac`. It is false for `electron-builder --mac`. Adding `extraResources` to that leftover block made the dangerous path look patched.
+- **Admin remount as the firmware-install gate.** Customers should not need a Mac password to update a USB Harmonizer. Sharing that gate with Save means the same prompt will hit preset transfer too. The 30 s timeout plus a `'download'` progress stage is how Edward’s Mini reported a “download” failure.
+- **Firmware Updates compares the catalog to the Manager app version.** That page is named for device firmware and badged from `semverGt(firmwareCatalog, appVersion)`. It will lie whenever those two version series are not the same number.
+- **Preset empty state sends people to bootloader.** Preset I/O needs `CIRCUITPY`. The copy is leftover from the flash flow.
+- **One `CIRCUITPY` only.** Two Harmonizers on one Mac is exactly the job Edward tried. Manager cannot see the second volume.
+- **Silent Import / Export.** Save has a banner. Import does not. That is unfinished, not minimal.
+- **No CI.** The recipe is a local script. Muscle memory from July (`vite build && electron-builder`, `electron-builder --mac --win`) still exists in git history.
+
+### Unclear (code does not settle it)
+
+- Whether this firmware reloads `presets.json` without a restart.
+- Whether Edward’s devices already ship a `boot.py` that remounts writable — if they do, the Mini prompt means TCC or a failed test-write, not a read-only FAT mount.
+- Which macOS dialog he dismissed (TCC Allow vs admin password vs timeout).
+- Whether Import changed the on-screen list. If it did, this is apply/save/reload. If it did not, this is silent failure or a file with no `presets` array.
+- Whether both Harmonizers were plugged in at once.
+
+---
+
+## 6. Questions for Edward
+
+Only questions the Manager code cannot answer. Skip any that are already obvious from the Mini session.
+
+1. After Import, did the preset *names in the editor* change to the first Harmonizer’s bank, or did the screen look unchanged?
+2. Did **Save to Device** light up (lime), and did you click it?
+3. Were both Harmonizers plugged in at the same time, or did you swap them?
+4. Firmware prompt: was it “allow access to a removable volume” (Allow / Don’t Allow), a macOS **password** dialog, or both? Did you Allow / enter the password, or cancel?
+5. When firmware failed, was the volume `CIRCUITPY` or `RPI-RP2`?
+6. After any successful Save, did the second Harmonizer get an unplug/replug or a single reset (not the bootloader double-tap)?
+7. Should a later 1.0.9 try to drop the admin remount (depend on firmware `boot.py`) before any signed 1.0.8, or is signed-but-still-prompting acceptable for a first customer updater?
+
+Do not publish 1.0.8 until those that matter to you are answered. This PR still implements nothing.
+
+---
+
+## 7. What this PR is not
 
 - Not a 1.0.9 implementation.
 - Not a version bump.
 - Not a behaviour change.
-- Not a signed 1.0.8.
+- Not a signed or published 1.0.8. Do not publish 1.0.8 yet.
 - Not a live 1.0.6 / download-page / R2 / Keychain / master merge.
 
 Edward still has to approve any later implementation.
