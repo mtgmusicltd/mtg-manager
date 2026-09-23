@@ -7,9 +7,10 @@ const os = require('os')
 const crypto = require('crypto')
 const https = require('https')
 const http = require('http')
-const { execSync, execFile } = require('child_process')
+const { execSync, execFile, execFileSync } = require('child_process')
 const { extractFirmwareFiles } = require('./firmwareFiles.cjs')
 const { allowedExternalUrl } = require('./externalLinks.cjs')
+const { makeCircuitPyWritable, MESSAGES: MOUNT_MESSAGES } = require('./circuitpyMount.cjs')
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 const API_BASE = 'https://mtg-licensing-api-production.up.railway.app'
 
@@ -282,55 +283,35 @@ for line in out.split('\\n'):
 
 let circuitpyMounted = false
 
-function getDiskDevice(mountPoint) {
-  try {
-    const output = execSync(`diskutil info "${mountPoint}" 2>/dev/null`, { encoding: 'utf-8' })
-    const match = output.match(/Device Node:\s+(\S+)/)
-    return match ? match[1] : null
-  } catch {
-    return null
-  }
-}
-
-function ensureCircuitPyWritable(drivePath) {
-  if (process.platform !== 'darwin') return true
-  if (circuitpyMounted) return true
-
-  const testFile = path.join(drivePath, '.mtg_write_test')
+function canWrite(dir) {
+  const testFile = path.join(dir, '.mtg_write_test')
   try {
     fs.writeFileSync(testFile, '')
     fs.unlinkSync(testFile)
-    circuitpyMounted = true
     return true
   } catch {
-    // Not writable — need to remount
-  }
-
-  try {
-    const device = getDiskDevice(drivePath)
-    if (!device) throw new Error('Could not find disk device for CIRCUITPY')
-
-    const script = [
-      `do shell script "diskutil unmount '${drivePath}' && sleep 1 && /sbin/mount_msdos -o rw '${device}' '${drivePath}'"`,
-      `with administrator privileges`,
-    ].join(' ')
-
-    execSync(`osascript -e '${script}'`, { timeout: 30000 })
-
-    // Verify the remount actually worked before declaring success
-    try {
-      fs.writeFileSync(testFile, '')
-      fs.unlinkSync(testFile)
-      circuitpyMounted = true
-      return true
-    } catch {
-      console.error('[MOUNT] Remount succeeded but drive is still read-only')
-      return false
-    }
-  } catch (e) {
-    console.error('[MOUNT] Failed to remount CIRCUITPY as writable:', e.message)
     return false
   }
+}
+
+// Returns { ok, mountPoint, message }. See electron/circuitpyMount.cjs for why
+// the drive can be read-only and why we never leave it unmounted.
+function makeCircuitPyWritableNow(drivePath) {
+  if (process.platform !== 'darwin') return { ok: true, mountPoint: drivePath }
+  if (circuitpyMounted && canWrite(drivePath)) return { ok: true, mountPoint: drivePath }
+
+  const result = makeCircuitPyWritable(drivePath, {
+    run: (cmd, args) => execFileSync(cmd, args, { encoding: 'utf-8', timeout: 30000 }),
+    isWritable: canWrite,
+    sleep: (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms),
+  })
+  circuitpyMounted = result.ok
+  if (!result.ok) console.error(`[MOUNT] CIRCUITPY not writable: ${result.reason}`)
+  return result
+}
+
+function ensureCircuitPyWritable(drivePath) {
+  return makeCircuitPyWritableNow(drivePath).ok
 }
 
 let lastDeviceConnected = false
@@ -396,19 +377,17 @@ ipcMain.handle('write-presets', (_, jsonData) => {
   const drivePath = findCircuitPyDrive()
   if (!drivePath) return { success: false, error: 'Device not connected' }
 
-  const writable = ensureCircuitPyWritable(drivePath)
-  if (!writable) {
-    return { success: false, error: 'Permission denied. Please allow MTG Manager to write to the device when prompted.' }
-  }
+  const mount = makeCircuitPyWritableNow(drivePath)
+  if (!mount.ok) return { success: false, error: mount.message }
 
-  const presetsPath = path.join(drivePath, 'presets.json')
+  const presetsPath = path.join(mount.mountPoint, 'presets.json')
   try {
     fs.writeFileSync(presetsPath, JSON.stringify(jsonData))
     return { success: true }
   } catch (e) {
-    if (e.code === 'EROFS') {
+    if (e.code === 'EROFS' || e.code === 'EACCES' || e.code === 'EPERM') {
       circuitpyMounted = false
-      return { success: false, error: 'The device is still read-only. Try ejecting and reconnecting the device, then save again.' }
+      return { success: false, error: MOUNT_MESSAGES['media-read-only'] }
     }
     return { success: false, error: e.message }
   }
