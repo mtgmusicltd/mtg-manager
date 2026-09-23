@@ -8,6 +8,7 @@ const crypto = require('crypto')
 const https = require('https')
 const http = require('http')
 const { execSync, execFile } = require('child_process')
+const { extractFirmwareFiles } = require('./firmwareFiles.cjs')
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 const API_BASE = 'https://mtg-licensing-api-production.up.railway.app'
 
@@ -691,10 +692,13 @@ ipcMain.handle('download-and-flash', async (event, { key, version }) => {
       sendProgress('download', pct, 'Downloading application files...')
     })
 
-    // Step 6: Extract files zip to CIRCUITPY
+    // Step 6: Extract files zip to CIRCUITPY, keeping the customer's presets
     sendProgress('install', 82, 'Installing files to device...')
     try {
-      execSync(`unzip -o "${tmpZip}" -d "${targetPath}"`, { timeout: 120000 })
+      const { kept } = extractFirmwareFiles(tmpZip, targetPath, {
+        backupDir: path.join(app.getPath('userData'), 'preset-backups'),
+      })
+      if (kept.length) console.log(`[INSTALL] Kept existing ${kept.join(', ')}`)
     } catch (e) {
       throw new Error(`Extract failed: ${e.message}`)
     }
