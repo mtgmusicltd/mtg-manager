@@ -61,6 +61,7 @@ declare global {
       detectBootloader(): Promise<DeviceStatus>
       flashFirmware(payload: { buffer: string; fileName: string }): Promise<ApiResult>
       getAppVersion(): Promise<string>
+      openExternal(url: string): Promise<boolean>
       // API calls (routed through main process)
       apiActivate(key: string, machineId: string): Promise<IpcApiResult>
       apiValidate(key: string, machineId: string): Promise<ValidateResult>

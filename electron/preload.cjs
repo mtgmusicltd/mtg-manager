@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   detectBootloader: () => ipcRenderer.invoke('detect-bootloader'),
   flashFirmware: (payload) => ipcRenderer.invoke('flash-firmware', payload),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+  // Setup guides: main only opens https://miditrumpetguy.com/ URLs
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
   // API calls (routed through main process to avoid renderer network restrictions)
   apiActivate: (key, machineId) => ipcRenderer.invoke('api-activate', { key, machineId }),
   apiValidate: (key, machineId) => ipcRenderer.invoke('api-validate', { key, machineId }),

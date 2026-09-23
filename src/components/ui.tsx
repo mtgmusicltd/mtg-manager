@@ -11,7 +11,7 @@ import logoUrl from '../assets/mtg-logo.png'
 type IconName =
   | 'keys' | 'chip' | 'settings' | 'usb' | 'plug' | 'check' | 'alert'
   | 'download' | 'upload' | 'save' | 'plus' | 'trash' | 'edit' | 'copy'
-  | 'refresh' | 'chevron' | 'info' | 'lock' | 'sparkle'
+  | 'refresh' | 'chevron' | 'info' | 'lock' | 'sparkle' | 'external'
 
 const PATHS: Record<IconName, ReactNode> = {
   keys: <><rect x="3" y="4" width="18" height="16" rx="3" /><path d="M3 10h18M9 10v10M15 10v10" /></>,
@@ -32,6 +32,7 @@ const PATHS: Record<IconName, ReactNode> = {
   chevron: <path d="M6 9l6 6 6-6" />,
   info: <><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></>,
   lock: <><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></>,
+  external: <><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3" /></>,
   sparkle: <><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z" /><path d="M19 17l.7 2.3L22 20l-2.3.7L19 23l-.7-2.3L16 20l2.3-.7L19 17z" /></>,
 }
 
@@ -103,6 +104,17 @@ export function Em({ children }: { children: ReactNode }) {
 
 export function Lime({ children }: { children: ReactNode }) {
   return <span className="font-semibold" style={{ color: 'var(--color-lime)' }}>{children}</span>
+}
+
+// ─── External link (opens in the default browser) ───────────────────────────
+
+export function ExternalLink({ onClick, children, className = '' }: { onClick: () => void; children: ReactNode; className?: string }) {
+  return (
+    <button type="button" onClick={onClick} className={`link-external ${className}`}>
+      {children}
+      <Icon name="external" size={12} />
+    </button>
+  )
 }
 
 // ─── Empty state ─────────────────────────────────────────────────────────────

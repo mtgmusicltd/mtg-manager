@@ -1,5 +1,5 @@
 'use strict'
-const { app, BrowserWindow, ipcMain, dialog } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron')
 const { autoUpdater } = require('electron-updater')
 const path = require('path')
 const fs = require('fs')
@@ -9,6 +9,7 @@ const https = require('https')
 const http = require('http')
 const { execSync, execFile } = require('child_process')
 const { extractFirmwareFiles } = require('./firmwareFiles.cjs')
+const { allowedExternalUrl } = require('./externalLinks.cjs')
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 const API_BASE = 'https://mtg-licensing-api-production.up.railway.app'
 
@@ -472,6 +473,15 @@ ipcMain.handle('flash-firmware', async (_, { buffer, fileName }) => {
 })
 
 ipcMain.handle('get-app-version', () => app.getVersion())
+
+// Opens https://miditrumpetguy.com/ pages (the setup guides) in the default
+// browser. Every other URL is refused.
+ipcMain.handle('open-external', async (_, url) => {
+  const allowed = allowedExternalUrl(url)
+  if (!allowed) return false
+  await shell.openExternal(allowed)
+  return true
+})
 
 // FIX: was calling /api/admin/deactivate (requires admin token — always 401).
 // Now correctly calls the public /api/deactivate endpoint.

@@ -134,6 +134,15 @@ input[type=number] { -moz-appearance: textfield; }
   .btn-ghost { background: transparent; color: var(--color-muted); }
   .btn-ghost:hover:not(:disabled) { color: var(--color-text); background: var(--color-navy-mid); }
 
+  /* Web links (setup guides). Azure = links, per the brand pack. */
+  .link-external {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: transparent; border: 0; padding: 0; cursor: pointer;
+    font-family: var(--font); font-size: 13px; font-weight: 500;
+    color: var(--color-azure);
+  }
+  .link-external:hover { text-decoration: underline; text-underline-offset: 3px; }
+
   .btn-danger { background: transparent; border-color: rgba(224, 82, 82, 0.5); color: var(--color-danger); }
   .btn-danger:hover:not(:disabled) { background: rgba(224, 82, 82, 0.12); border-color: var(--color-danger); }
 

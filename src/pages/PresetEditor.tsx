@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useApp } from '../store/AppContext'
 import type { Preset } from '../types/electron'
-import { Em, EmptyState, Icon, Lime, Modal, Steps } from '../components/ui'
+import { Em, EmptyState, ExternalLink, Icon, Lime, Modal, Steps } from '../components/ui'
+import { openSetupGuides } from '../lib/setupGuides'
 import VoiceBars from '../components/VoiceBars'
 import { useHarmonizerMidi } from '../hooks/useHarmonizerMidi'
 import { modeFromPresets, resolveLive } from '../lib/harmonizerMidi'
@@ -334,6 +335,9 @@ export default function PresetEditor() {
           <Icon name="refresh" size={14} />
           Check again
         </button>
+        <p className="m-0 mt-5 text-[13px]" style={{ color: 'var(--color-muted)' }}>
+          First time? <ExternalLink onClick={openSetupGuides}>Setup guides</ExternalLink>
+        </p>
       </EmptyState>
     )
   }
@@ -558,11 +562,18 @@ export default function PresetEditor() {
                 )}
               </div>
             ) : (
-              <p className="m-0 text-sm leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-                {midi.availability === 'denied'
-                  ? 'MIDI access is off. Restart MTG Manager and allow MIDI when asked.'
-                  : 'Press a key on your Harmonizer'}
-              </p>
+              <>
+                <p className="m-0 text-sm leading-relaxed" style={{ color: 'var(--color-muted)' }}>
+                  {midi.availability === 'denied'
+                    ? 'MIDI access is off. Restart MTG Manager and allow MIDI when asked.'
+                    : 'Press a key on your Harmonizer'}
+                </p>
+                {midi.availability !== 'ready' && (
+                  <p className="m-0 mt-2 text-xs leading-relaxed" style={{ color: 'var(--color-muted)' }}>
+                    No MIDI? <ExternalLink onClick={openSetupGuides} className="text-xs">Setup guides</ExternalLink>
+                  </p>
+                )}
+              </>
             )}
           </div>
 

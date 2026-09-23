@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useApp, type AppPage } from '../store/AppContext'
-import { Icon, Logo } from './ui'
+import { ExternalLink, Icon, Logo } from './ui'
+import { openSetupGuides } from '../lib/setupGuides'
 
 const IS_MAC = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform)
 
@@ -68,6 +69,10 @@ export default function Sidebar() {
           )
         })}
       </nav>
+
+      <div className="px-5 pt-3">
+        <ExternalLink onClick={openSetupGuides} className="text-[12px]">Setup guides</ExternalLink>
+      </div>
 
       <div className="flex-1" />
 
