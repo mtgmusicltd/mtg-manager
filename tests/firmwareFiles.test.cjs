@@ -59,3 +59,64 @@ test("works with Ed's real pre-test preset file", { skip: !fs.existsSync(path.jo
   extractFirmwareFiles(zip, device, { log: () => {} })
   assert.ok(fs.readFileSync(path.join(device, 'presets.json')).equals(real))
 })
+
+// ── presets.default.json (firmware 1.1.3+) ──────────────────────────────────
+
+const { presetsFileToRead } = require('../electron/firmwareFiles.cjs')
+const FACTORY = JSON.stringify({ mode: 'MTG', preset_index: 0, presets: [{ name: 'Factory' }] })
+
+function makeZipWith(dir, files) {
+  const src = path.join(dir, 'zipsrc2')
+  fs.mkdirSync(src, { recursive: true })
+  for (const [name, body] of Object.entries(files)) fs.writeFileSync(path.join(src, name), body)
+  const zip = path.join(dir, 'files2.zip')
+  execFileSync('zip', ['-qr', zip, '.'], { cwd: src })
+  return zip
+}
+
+test('reads presets.json when it exists, even alongside presets.default.json', () => {
+  const { device } = setup()
+  fs.writeFileSync(path.join(device, 'presets.json'), '{}')
+  fs.writeFileSync(path.join(device, 'presets.default.json'), FACTORY)
+  assert.deepStrictEqual(presetsFileToRead(device), { path: path.join(device, 'presets.json'), isDefault: false })
+})
+
+test('falls back to presets.default.json when presets.json is missing', () => {
+  const { device } = setup()
+  fs.writeFileSync(path.join(device, 'presets.default.json'), FACTORY)
+  assert.deepStrictEqual(presetsFileToRead(device), { path: path.join(device, 'presets.default.json'), isDefault: true })
+})
+
+test('with neither file, points at presets.json so the read reports it missing', () => {
+  const { device } = setup()
+  assert.deepStrictEqual(presetsFileToRead(device), { path: path.join(device, 'presets.json'), isDefault: false })
+})
+
+test('an install whose ZIP has no presets.default.json leaves the device copy alone', () => {
+  const { device, zip } = setup()
+  fs.writeFileSync(path.join(device, 'presets.default.json'), FACTORY)
+  extractFirmwareFiles(zip, device, { log: () => {} })
+  assert.strictEqual(fs.readFileSync(path.join(device, 'presets.default.json'), 'utf8'), FACTORY)
+})
+
+test('an install whose ZIP ships presets.default.json updates it but keeps presets.json', () => {
+  const { dir, device } = setup()
+  const newFactory = JSON.stringify({ mode: 'MTG', preset_index: 0, presets: [{ name: 'Factory v2' }] })
+  const zip = makeZipWith(dir, { 'presets.default.json': newFactory, 'boot.py': 'new boot' })
+  const mine = JSON.stringify({ mode: 'MTG', preset_index: 1, presets: [{ name: 'Mine' }] })
+  fs.writeFileSync(path.join(device, 'presets.json'), mine)
+  fs.writeFileSync(path.join(device, 'presets.default.json'), FACTORY)
+  const res = extractFirmwareFiles(zip, device, { log: () => {} })
+  assert.deepStrictEqual(res.kept, ['presets.json'])
+  assert.strictEqual(fs.readFileSync(path.join(device, 'presets.json'), 'utf8'), mine)
+  assert.strictEqual(fs.readFileSync(path.join(device, 'presets.default.json'), 'utf8'), newFactory)
+})
+
+test('a fresh device gets presets.default.json from the ZIP and no presets.json is invented', () => {
+  const { dir, device } = setup()
+  const zip = makeZipWith(dir, { 'presets.default.json': FACTORY })
+  extractFirmwareFiles(zip, device, { log: () => {} })
+  assert.strictEqual(fs.readFileSync(path.join(device, 'presets.default.json'), 'utf8'), FACTORY)
+  assert.strictEqual(fs.existsSync(path.join(device, 'presets.json')), false)
+  assert.strictEqual(presetsFileToRead(device).isDefault, true)
+})

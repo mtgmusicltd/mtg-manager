@@ -8,7 +8,7 @@ const crypto = require('crypto')
 const https = require('https')
 const http = require('http')
 const { execSync, execFile, execFileSync } = require('child_process')
-const { extractFirmwareFiles } = require('./firmwareFiles.cjs')
+const { extractFirmwareFiles, presetsFileToRead } = require('./firmwareFiles.cjs')
 const { allowedExternalUrl } = require('./externalLinks.cjs')
 const { makeCircuitPyWritable, MESSAGES: MOUNT_MESSAGES } = require('./circuitpyMount.cjs')
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
@@ -343,7 +343,10 @@ ipcMain.handle('detect-device', () => {
 ipcMain.handle('read-presets', () => {
   const drivePath = findCircuitPyDrive()
   if (!drivePath) return { success: false, error: 'Device not connected' }
-  const presetsPath = path.join(drivePath, 'presets.json')
+  // A brand-new device on firmware 1.1.3+ may only have presets.default.json.
+  // Saving always writes presets.json, so the defaults file is never touched.
+  const { path: presetsPath, isDefault } = presetsFileToRead(drivePath)
+  if (isDefault) console.log('[PRESETS] No presets.json; showing presets.default.json')
   try {
     const raw = fs.readFileSync(presetsPath, 'utf-8')
     const data = JSON.parse(raw)

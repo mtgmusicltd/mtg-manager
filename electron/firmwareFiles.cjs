@@ -12,6 +12,20 @@ const { execFileSync } = require('child_process')
 // Files on the device that belong to the customer once they exist.
 const CUSTOMER_FILES = ['presets.json']
 
+// Firmware 1.1.3 ships its factory presets as presets.default.json. It isn't
+// the customer's file: only the ZIP may replace it, and nothing here deletes it.
+// The Manager reads it only when presets.json is missing, and never writes it.
+const DEFAULT_PRESETS_FILE = 'presets.default.json'
+
+/** Which presets file to read from the device: presets.json, else the factory defaults. */
+function presetsFileToRead(drivePath) {
+  const own = path.join(drivePath, 'presets.json')
+  if (fs.existsSync(own)) return { path: own, isDefault: false }
+  const factory = path.join(drivePath, DEFAULT_PRESETS_FILE)
+  if (fs.existsSync(factory)) return { path: factory, isDefault: true }
+  return { path: own, isDefault: false }
+}
+
 function extractFirmwareFiles(zipPath, targetPath, { backupDir = null, log = console.log } = {}) {
   const kept = []
   for (const name of CUSTOMER_FILES) {
@@ -43,4 +57,4 @@ function extractFirmwareFiles(zipPath, targetPath, { backupDir = null, log = con
   return { kept: kept.map(k => k.name) }
 }
 
-module.exports = { extractFirmwareFiles, CUSTOMER_FILES }
+module.exports = { extractFirmwareFiles, presetsFileToRead, CUSTOMER_FILES, DEFAULT_PRESETS_FILE }
