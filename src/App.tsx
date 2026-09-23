@@ -1,7 +1,7 @@
 import { AppProvider, useApp } from './store/AppContext'
 import LicenceSplash from './components/LicenceSplash'
 import InvalidLicence from './components/InvalidLicence'
-import TopNav from './components/TopNav'
+import Sidebar from './components/Sidebar'
 import PresetEditor from './pages/PresetEditor'
 import FirmwareUpdates from './pages/FirmwareUpdates'
 import Settings from './pages/Settings'
@@ -11,11 +11,11 @@ function AppShell() {
 
   if (licenceState === 'checking') {
     return (
-      <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#0C0B25' }}>
-        <div className="flex flex-col items-center gap-4">
-          <img src="./logo.png" alt="MTG" className="w-20 h-20 object-contain animate-pulse" />
-          <p className="text-sm" style={{ color: '#454570', fontFamily: 'Barlow, sans-serif' }}>
-            Validating licence...
+      <div className="fixed inset-0 flex items-center justify-center" style={{ background: 'var(--color-navy)', WebkitAppRegion: 'drag' } as React.CSSProperties}>
+        <div className="flex flex-col items-center gap-5">
+          <img src="./logo.png" alt="MTG" className="w-16 h-16 object-contain animate-pulse" draggable={false} />
+          <p className="m-0 text-sm" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-heading)' }}>
+            Checking your licence…
           </p>
         </div>
       </div>
@@ -31,9 +31,9 @@ function AppShell() {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <TopNav />
-      <main className="flex-1 flex overflow-hidden">
+    <div className="flex h-full" style={{ background: 'var(--color-navy)' }}>
+      <Sidebar />
+      <main className="flex-1 flex min-w-0 overflow-hidden">
         {currentPage === 'presets' && <PresetEditor />}
         {currentPage === 'updates' && <FirmwareUpdates />}
         {currentPage === 'settings' && <Settings />}
