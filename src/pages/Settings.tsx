@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useApp } from '../store/AppContext'
+import { Icon, Modal, PageHeader, Section } from '../components/ui'
 
 function maskKey(key: string): string {
   if (!key || key.length < 4) return key
@@ -8,6 +9,17 @@ function maskKey(key: string): string {
     return `${parts[0]}-${parts[1]}-XXXX-${parts[3]}`
   }
   return key.slice(0, 4) + '-XXXX-XXXX-' + key.slice(-4)
+}
+
+function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-2 text-sm" style={{ borderTop: '1px solid var(--color-navy-border)' }}>
+      <span style={{ color: 'var(--color-muted)' }}>{label}</span>
+      <span className="truncate" style={{ color: 'var(--color-text)', fontFamily: mono ? 'var(--font-mono)' : undefined, fontSize: mono ? 13 : undefined }}>
+        {value}
+      </span>
+    </div>
+  )
 }
 
 export default function Settings() {
@@ -52,197 +64,114 @@ export default function Settings() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-8">
-      <div className="max-w-xl mx-auto">
-        <h1 className="text-2xl font-black mb-8" style={{ fontFamily: 'Barlow, sans-serif', color: '#e8e8f0' }}>
-          Settings
-        </h1>
+    <div className="flex-1 overflow-y-auto">
+      <div className="max-w-xl mx-auto px-8 py-8 fade-up">
+        <PageHeader title="Settings" subtitle="Your licence, this computer, and where to get help." />
 
-        {/* Licence section */}
-        <section className="mb-6">
-          <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ fontFamily: 'Barlow, sans-serif', color: '#7070a0' }}>
-            Licence
-          </h2>
-          <div className="rounded-xl p-5" style={{ background: '#13122e', border: '1px solid #252450' }}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-xs mb-1" style={{ color: '#7070a0', fontFamily: 'Barlow, sans-serif' }}>Licence Key</p>
-                <p className="font-mono text-sm" style={{ color: '#C8D300', letterSpacing: '0.1em' }}>
+        {/* Licence */}
+        <Section title="Licence">
+          <div className="card p-5">
+            <div className="flex items-center justify-between gap-4 mb-3">
+              <div className="min-w-0">
+                <p className="eyebrow m-0 mb-1.5">Licence key</p>
+                <p className="m-0 text-base" style={{ color: 'var(--color-lime)', fontFamily: 'var(--font-mono)', letterSpacing: '0.12em' }}>
                   {licenceKey ? maskKey(licenceKey) : '—'}
                 </p>
               </div>
-              <span
-                className="text-xs px-2 py-1 rounded font-semibold"
-                style={{ background: 'rgba(200,211,0,0.1)', color: '#C8D300', fontFamily: 'Barlow, sans-serif' }}
-              >
-                Active
-              </span>
+              <span className="pill pill-lime"><Icon name="check" size={11} /> Active</span>
             </div>
-            <p className="text-xs mb-4" style={{ color: '#454570' }}>
-              Each licence key supports 1 machine. To transfer your licence to a new machine, remove it here first.
+            <p className="text-sm m-0 mb-4 leading-relaxed" style={{ color: 'var(--color-muted)' }}>
+              Each key works on one computer at a time. To move to a new computer, remove the licence here first, then activate on the other one.
             </p>
-            <div style={{ borderTop: '1px solid #1a1940', paddingTop: '16px' }}>
+            <div className="pt-4" style={{ borderTop: '1px solid var(--color-navy-border)' }}>
               <button
                 onClick={() => { setShowConfirm(true); setRemoveError('') }}
-                className="text-xs px-3 py-1.5 rounded-lg font-semibold transition-all"
-                style={{
-                  fontFamily: 'Barlow, sans-serif',
-                  background: 'rgba(224,82,82,0.08)',
-                  border: '1px solid rgba(224,82,82,0.25)',
-                  color: '#e05252',
-                  cursor: 'pointer',
-                }}
+                className="btn btn-danger btn-sm"
               >
-                Remove Licence
+                Remove licence from this computer
               </button>
             </div>
           </div>
-        </section>
+        </Section>
 
-        {/* Machine section */}
-        <section className="mb-6">
-          <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ fontFamily: 'Barlow, sans-serif', color: '#7070a0' }}>
-            This Machine
-          </h2>
-          <div className="rounded-xl p-5" style={{ background: '#13122e', border: '1px solid #252450' }}>
-            <p className="text-xs mb-1" style={{ color: '#7070a0', fontFamily: 'Barlow, sans-serif' }}>Machine Fingerprint</p>
-            <div className="flex items-center gap-2 mt-1">
-              <p
-                className="font-mono text-xs flex-1 truncate"
-                style={{ color: '#454570' }}
+        {/* This computer */}
+        <Section title="This computer">
+          <div className="card p-5">
+            <p className="eyebrow m-0 mb-2">Machine fingerprint</p>
+            <div className="flex items-center gap-2">
+              <code
+                className="flex-1 truncate text-xs px-3 py-2 rounded-lg"
+                style={{ background: 'var(--color-navy)', border: '1px solid var(--color-navy-border)', color: 'var(--color-text-soft)', fontFamily: 'var(--font-mono)' }}
                 title={fingerprint}
               >
                 {fingerprint || 'Loading…'}
-              </p>
-              <button
-                onClick={copyFingerprint}
-                className="text-xs px-2 py-1 rounded shrink-0"
-                style={{
-                  background: '#1a1940',
-                  border: '1px solid #252450',
-                  color: copied ? '#C8D300' : '#7070a0',
-                  cursor: 'pointer',
-                  fontFamily: 'Barlow, sans-serif',
-                }}
-              >
-                {copied ? 'Copied!' : 'Copy'}
+              </code>
+              <button onClick={copyFingerprint} className="btn btn-secondary btn-sm shrink-0" disabled={!fingerprint}>
+                <Icon name={copied ? 'check' : 'copy'} size={13} />
+                {copied ? 'Copied' : 'Copy'}
               </button>
             </div>
-            <p className="text-xs mt-3" style={{ color: '#454570' }}>
-              This identifier is used to associate your licence with this computer. It is generated from your hardware and never transmitted without your key.
+            <p className="text-xs m-0 mt-3 leading-relaxed" style={{ color: 'var(--color-faint)' }}>
+              This identifier ties your licence to this computer. It is generated from your hardware and only ever sent alongside your key.
             </p>
           </div>
-        </section>
+        </Section>
 
-        {/* About section */}
-        <section className="mb-6">
-          <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ fontFamily: 'Barlow, sans-serif', color: '#7070a0' }}>
-            About
-          </h2>
-          <div className="rounded-xl p-5" style={{ background: '#13122e', border: '1px solid #252450' }}>
-            <div className="flex items-center gap-4 mb-4">
-              <img src="./logo.png" alt="MTG Logo" className="w-12 h-12 object-contain" />
+        {/* About */}
+        <Section title="About">
+          <div className="card p-5">
+            <div className="flex items-center gap-4 mb-3">
+              <img src="./logo.png" alt="" className="w-11 h-11 object-contain" draggable={false} />
               <div>
-                <p className="font-black text-base" style={{ fontFamily: 'Barlow, sans-serif', color: '#C8D300' }}>
+                <p className="m-0 font-black text-base" style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-lime)' }}>
                   MTG Manager
                 </p>
-                <p className="text-xs" style={{ color: '#7070a0' }}>
-                  MIDI Harmonizer Software Manager
+                <p className="m-0 text-xs" style={{ color: 'var(--color-muted)' }}>
+                  Companion app for the MTG MIDI Harmonizer
                 </p>
               </div>
             </div>
-            <div className="flex flex-col gap-2">
-              <div className="flex justify-between text-xs">
-                <span style={{ color: '#7070a0' }}>Version</span>
-                <span style={{ color: '#e8e8f0', fontFamily: 'monospace' }}>v{appVersion}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span style={{ color: '#7070a0' }}>Device</span>
-                <span style={{ color: '#e8e8f0' }}>Adafruit MacroPad RP2040</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span style={{ color: '#7070a0' }}>API</span>
-                <span style={{ color: '#e8e8f0', fontFamily: 'monospace' }}>mtg-licensing-api-production.up.railway.app</span>
-              </div>
-            </div>
+            <Row label="Version" value={`v${appVersion}`} mono />
+            <Row label="Device" value="Adafruit MacroPad RP2040" />
+            <Row label="Licence server" value="mtg-licensing-api-production.up.railway.app" mono />
           </div>
-        </section>
+        </Section>
 
         {/* Support */}
-        <section>
-          <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ fontFamily: 'Barlow, sans-serif', color: '#7070a0' }}>
-            Support
-          </h2>
-          <div className="rounded-xl p-5" style={{ background: '#13122e', border: '1px solid #252450' }}>
-            <p className="text-sm mb-3" style={{ color: '#7070a0' }}>
-              For licence transfers, technical issues, or general support, please reach out to the MTG team.
+        <Section title="Support">
+          <div className="card p-5">
+            <p className="text-sm m-0 mb-2 leading-relaxed" style={{ color: 'var(--color-text-soft)' }}>
+              Stuck, or moving your licence to another computer? Contact the MTG team and we will help.
             </p>
-            <p className="text-xs" style={{ color: '#454570' }}>
-              Include your machine fingerprint and licence key (last 4 digits only) when contacting support.
+            <p className="text-xs m-0 leading-relaxed" style={{ color: 'var(--color-faint)' }}>
+              Include your machine fingerprint and the last four characters of your licence key so we can find your order quickly.
             </p>
           </div>
-        </section>
+        </Section>
       </div>
 
       {/* Confirmation modal */}
       {showConfirm && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50"
-          style={{ background: 'rgba(0,0,0,0.7)' }}
-          onClick={(e) => { if (e.target === e.currentTarget && !removing) setShowConfirm(false) }}
-        >
-          <div className="rounded-2xl p-6 max-w-sm w-full mx-4"
-            style={{ background: '#13122e', border: '1px solid rgba(224,82,82,0.3)' }}>
-            <h3 className="text-base font-black mb-2" style={{ fontFamily: 'Barlow, sans-serif', color: '#e8e8f0' }}>
-              Remove Licence?
-            </h3>
-            <p className="text-sm mb-2" style={{ color: '#a0a0c0' }}>
-              This will deactivate your licence on this machine and free up your machine slot.
-            </p>
-            <p className="text-sm mb-4" style={{ color: '#a0a0c0' }}>
-              You will need to enter a valid licence key to use the app again. Your presets on the device will not be affected.
-            </p>
-            {removeError && (
-              <p className="text-xs mb-4 px-3 py-2 rounded-lg" style={{ background: 'rgba(224,82,82,0.08)', color: '#e05252', border: '1px solid rgba(224,82,82,0.2)' }}>
-                {removeError}
-              </p>
-            )}
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowConfirm(false)}
-                disabled={removing}
-                className="flex-1 py-2 rounded-lg text-sm font-semibold"
-                style={{
-                  fontFamily: 'Barlow, sans-serif',
-                  background: '#1a1940',
-                  border: '1px solid #252450',
-                  color: removing ? '#454570' : '#7070a0',
-                  cursor: removing ? 'not-allowed' : 'pointer',
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleRemoveLicence}
-                disabled={removing}
-                className="flex-1 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-2"
-                style={{
-                  fontFamily: 'Barlow, sans-serif',
-                  background: removing ? 'rgba(224,82,82,0.05)' : 'rgba(224,82,82,0.12)',
-                  border: '1px solid rgba(224,82,82,0.3)',
-                  color: removing ? '#7070a0' : '#e05252',
-                  cursor: removing ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {removing && (
-                  <span className="w-3 h-3 rounded-full border-2 animate-spin shrink-0"
-                    style={{ borderColor: '#e05252', borderTopColor: 'transparent' }} />
-                )}
-                {removing ? 'Removing…' : 'Remove Licence'}
-              </button>
-            </div>
+        <Modal title="Remove licence from this computer?" tone="danger" onClose={() => { if (!removing) setShowConfirm(false) }}>
+          <p className="text-sm m-0 mb-2 leading-relaxed" style={{ color: 'var(--color-text-soft)' }}>
+            This deactivates the licence here and frees the slot so you can activate on another computer.
+          </p>
+          <p className="text-sm m-0 mb-5 leading-relaxed" style={{ color: 'var(--color-text-soft)' }}>
+            You will need to enter your key again to use MTG Manager on this computer. Presets stored on your Harmonizer are not affected.
+          </p>
+          {removeError && (
+            <div className="notice notice-danger mb-4" role="alert">{removeError}</div>
+          )}
+          <div className="flex gap-3">
+            <button onClick={() => setShowConfirm(false)} disabled={removing} className="btn btn-secondary flex-1">
+              Keep licence
+            </button>
+            <button onClick={handleRemoveLicence} disabled={removing} className="btn btn-danger flex-1">
+              {removing && <span className="spinner" />}
+              {removing ? 'Removing…' : 'Remove licence'}
+            </button>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   )
