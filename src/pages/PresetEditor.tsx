@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useApp } from '../store/AppContext'
 import type { Preset } from '../types/electron'
 import { Em, EmptyState, Icon, Lime, Modal, Steps } from '../components/ui'
+import VoiceBars from '../components/VoiceBars'
+import { useHarmonizerMidi } from '../hooks/useHarmonizerMidi'
+import { modeFromPresets, resolveLive } from '../lib/harmonizerMidi'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -34,10 +37,11 @@ interface KeyTileProps {
   hwKey: number
   voices: [number, number, number, number]
   selected: boolean
+  live: boolean
   onClick: () => void
 }
 
-function KeyTile({ visualPos, voices, selected, onClick }: KeyTileProps) {
+function KeyTile({ visualPos, voices, selected, live, onClick }: KeyTileProps) {
   const userLabel = visualPos + 1
   const activeVoices = voices.filter(v => v !== 0)
   const hasActive = activeVoices.length > 0
@@ -45,13 +49,13 @@ function KeyTile({ visualPos, voices, selected, onClick }: KeyTileProps) {
   return (
     <button
       onClick={onClick}
-      className={`key-tile ${selected ? 'key-tile-active' : ''}`}
+      className={`key-tile ${selected ? 'key-tile-active' : ''} ${live ? 'key-tile-live' : ''}`}
       aria-pressed={selected}
       aria-label={`Key ${userLabel}`}
     >
       <div className="flex items-center justify-between">
         <span
-          className="text-lg font-extrabold leading-none"
+          className="key-num text-lg font-extrabold leading-none"
           style={{ fontFamily: 'var(--font)', color: selected ? 'var(--color-lime)' : hasActive ? 'var(--color-text)' : 'var(--color-muted)' }}
         >
           {userLabel}
@@ -67,19 +71,19 @@ function KeyTile({ visualPos, voices, selected, onClick }: KeyTileProps) {
         )}
       </div>
 
-      {/* Voice values — one narrow column so tiles never wrap at the 900px minimum window */}
-      <div className="flex flex-col gap-px">
-        {VOICE_LABELS.map((lbl, i) => {
-          const active = voices[i] !== 0
-          return (
-            <div key={lbl} className="flex items-center gap-1.5 text-xs leading-tight">
-              <span className="w-3" style={{ color: 'var(--color-faint)', fontFamily: 'var(--font)', fontWeight: 700 }}>{lbl}</span>
-              <span style={{ fontFamily: 'var(--font-mono)', color: active ? 'var(--color-lime)' : 'var(--color-faint)' }}>
-                {formatSemitones(voices[i])}
-              </span>
-            </div>
-          )
-        })}
+      {/* Mini bipolar bars, A–D, with the semitone values underneath */}
+      <VoiceBars values={voices} height={34} />
+      <div className="flex gap-1.5 hide-narrow">
+        {voices.map((v, i) => (
+          <span
+            key={i}
+            className="flex-1 min-w-0 text-center text-[11px] leading-none"
+            style={{ fontFamily: 'var(--font-mono)', color: v !== 0 ? 'var(--color-lime)' : 'var(--color-muted)' }}
+            title={`Voice ${VOICE_LABELS[i]}`}
+          >
+            {formatSemitones(v)}
+          </span>
+        ))}
       </div>
     </button>
   )
@@ -175,6 +179,15 @@ export default function PresetEditor() {
 
   const allPresets: Preset[] = presets?.presets ?? []
   const currentPreset: Preset | null = allPresets[selectedPresetIdx] ?? null
+
+  // ── Live Harmonizer view (Web MIDI; CC 11–14 matched to the loaded preset) ──────
+  const midi = useHarmonizerMidi(deviceConnected)
+  const live = useMemo(
+    () => (midi.press ? resolveLive(midi.press.values, modeFromPresets(presets?.mode), currentPreset) : null),
+    [midi.press, presets?.mode, currentPreset],
+  )
+  const liveHwKeys = useMemo(() => new Set(live?.hwKeys ?? []), [live])
+  const liveVisualKeys = (live?.hwKeys ?? []).map(hw => KEY_ORDER.indexOf(hw) + 1).filter(n => n > 0).sort((a, b) => a - b)
 
   // Reset selected key when switching preset
   useEffect(() => {
@@ -418,6 +431,7 @@ export default function PresetEditor() {
                     hwKey={hwKey}
                     voices={voices}
                     selected={selectedKeyVisPos === visPos}
+                    live={liveHwKeys.has(hwKey)}
                     onClick={() => setSelectedKeyVisPos(visPos === selectedKeyVisPos ? null : visPos)}
                   />
                 )
@@ -436,6 +450,43 @@ export default function PresetEditor() {
           className="shrink-0 flex flex-col overflow-y-auto"
           style={{ width: 272, borderLeft: '1px solid var(--color-navy-border)', background: 'var(--color-navy-light)' }}
         >
+          {/* Now playing — lit by the Harmonizer's MIDI */}
+          <div className="p-5" style={{ borderBottom: '1px solid var(--color-navy-border)' }}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="eyebrow m-0">Now playing</h3>
+              {midi.availability === 'ready' && (
+                <span className="pill pill-lime" title={midi.inputName ?? undefined}>
+                  <span className="dot dot-lime dot-pulse" style={{ width: 6, height: 6 }} />
+                  Live
+                </span>
+              )}
+            </div>
+            {live ? (
+              <div key={midi.press?.seq} className="fade-up">
+                <div className="page-title mb-3" style={{ fontSize: 28 }}>
+                  {liveVisualKeys.length > 0 ? `Key ${liveVisualKeys[0]}` : 'No match'}
+                </div>
+                <VoiceBars values={live.intervals} height={96} showLabels showValues />
+                {liveVisualKeys.length > 1 && (
+                  <p className="m-0 mt-3 text-xs leading-relaxed" style={{ color: 'var(--color-muted)' }}>
+                    Keys {liveVisualKeys.join(', ')} share these voices, so any of them could be pressed.
+                  </p>
+                )}
+                {liveVisualKeys.length === 0 && (
+                  <p className="m-0 mt-3 text-xs leading-relaxed" style={{ color: 'var(--color-amber)' }}>
+                    These voices do not match any key in this preset. Save your changes to the Harmonizer, or pick the preset it is playing.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="m-0 text-sm leading-relaxed" style={{ color: 'var(--color-muted)' }}>
+                {midi.availability === 'denied'
+                  ? 'MIDI access is off. Restart MTG Manager and allow MIDI when asked.'
+                  : 'Press a key on your Harmonizer'}
+              </p>
+            )}
+          </div>
+
           <div className="p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="eyebrow m-0">
