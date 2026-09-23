@@ -28,12 +28,56 @@ interface FlashProgress {
   message: string
 }
 
+// Steps tick off as the main process reports percent (see download-and-flash in electron/main.cjs)
+const INSTALL_STEPS: { label: string; at: number }[] = [
+  { label: 'Download firmware', at: 30 },
+  { label: 'Prepare the Harmonizer', at: 62 },
+  { label: 'Build for this device', at: 70 },
+  { label: 'Copy application files', at: 82 },
+  { label: 'Write firmware', at: 100 },
+]
+
+function InstallProgress({ progress }: { progress: FlashProgress }) {
+  const pct = Math.max(0, Math.min(100, progress.percent))
+  const firstOpen = INSTALL_STEPS.findIndex(s => pct < s.at)
+  return (
+    <div className="mt-4">
+      <div className="w-full rounded-full overflow-hidden" style={{ height: 6, background: 'var(--color-navy-raised)' }}>
+        <div className="progress-fill h-full rounded-full" style={{ width: `${pct}%`, background: 'var(--color-lime)' }} />
+      </div>
+      <p className="m-0 mt-2 text-xs flex justify-between" style={{ color: 'var(--color-muted)' }}>
+        <span>{progressLabel(progress)}</span>
+        <span style={{ fontFamily: 'var(--font-mono)' }}>{pct}%</span>
+      </p>
+      <ol className="m-0 mt-3 p-0 list-none flex flex-col gap-1.5">
+        {INSTALL_STEPS.map((step, i) => {
+          const done = pct >= step.at
+          const active = !done && i === firstOpen
+          return (
+            <li key={step.label} className={`step-row ${done ? 'step-row-done' : ''} ${active ? 'step-row-active' : ''}`}>
+              <span className="step-mark">
+                {done ? <Icon name="check" size={11} /> : active ? <span className="spinner" style={{ width: 9, height: 9, color: 'var(--color-lime)' }} /> : null}
+              </span>
+              {step.label}
+            </li>
+          )
+        })}
+      </ol>
+      <p className="m-0 mt-3 text-xs" style={{ color: 'var(--color-amber)' }}>
+        Keep the Harmonizer plugged in until this finishes.
+      </p>
+    </div>
+  )
+}
+
 function progressLabel(progress: FlashProgress) {
   if (progress.stage === 'download') return 'Downloading firmware…'
   if (progress.stage === 'flash' && progress.percent < 60) return 'Installing CircuitPython…'
   if (progress.stage === 'flash') return 'Waiting for the Harmonizer to restart…'
-  if (progress.stage === 'files') return 'Copying application files…'
-  return 'Finishing up…'
+  if (progress.stage === 'compile') return 'Building for this device…'
+  if (progress.stage === 'install' || progress.stage === 'files') return 'Copying files to the Harmonizer…'
+  if (progress.stage === 'done') return 'Done'
+  return 'Working…'
 }
 
 export default function FirmwareUpdates() {
@@ -294,23 +338,7 @@ export default function FirmwareUpdates() {
                   </div>
 
                   {/* Progress bar */}
-                  {isLatest && isActive && progress && progress.percent > 0 && (
-                    <div className="mt-4">
-                      <div className="w-full rounded-full overflow-hidden" style={{ height: 6, background: 'var(--color-navy-raised)' }}>
-                        <div
-                          className="h-full rounded-full transition-all duration-300"
-                          style={{ width: `${progress.percent}%`, background: 'var(--color-lime)' }}
-                        />
-                      </div>
-                      <p className="m-0 mt-2 text-xs flex justify-between" style={{ color: 'var(--color-muted)' }}>
-                        <span>{progressLabel(progress)}</span>
-                        <span style={{ fontFamily: 'var(--font-mono)' }}>{progress.percent}%</span>
-                      </p>
-                      <p className="m-0 mt-2 text-xs" style={{ color: 'var(--color-amber)' }}>
-                        Keep the Harmonizer plugged in until this finishes.
-                      </p>
-                    </div>
-                  )}
+                  {isLatest && isActive && progress && <InstallProgress progress={progress} />}
 
                   {errMsg && (
                     <div className={`notice ${state === 'already_downloaded' ? 'notice-amber' : 'notice-danger'} mt-4`} role="alert">
