@@ -26,7 +26,7 @@ export default function InvalidLicence() {
             The key saved on this computer has been revoked, or this computer is no longer registered to it.
           </p>
           <p className="text-sm m-0" style={{ color: 'var(--color-text-soft)' }}>
-            Get in touch with MTG support and we will sort it out.
+            Get in touch with MIDI Trumpet Guy and we will sort it out.
           </p>
         </div>
       </div>

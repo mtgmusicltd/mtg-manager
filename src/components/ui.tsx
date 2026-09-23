@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import logoUrl from '../assets/mtg-logo.png'
 
 /*
   Small presentational primitives shared by every screen.
@@ -152,11 +153,24 @@ export function Modal({
 
 // ─── Brand ───────────────────────────────────────────────────────────────────
 
+/* Lime logo (#E3FC02). Blend mode drops the navy square so it sits on any navy surface. */
+export function Logo({ className = 'w-8 h-8', alt = '' }: { className?: string; alt?: string }) {
+  return (
+    <img
+      src={logoUrl}
+      alt={alt}
+      className={`${className} object-contain`}
+      style={{ mixBlendMode: 'lighten' }}
+      draggable={false}
+    />
+  )
+}
+
 export function Wordmark({ size = 'md' }: { size?: 'md' | 'lg' }) {
   const lg = size === 'lg'
   return (
     <div className={`flex items-center ${lg ? 'gap-4' : 'gap-3'}`}>
-      <img src="./logo.png" alt="" className={`${lg ? 'w-14 h-14' : 'w-8 h-8'} object-contain`} draggable={false} />
+      <Logo className={lg ? 'w-14 h-14' : 'w-8 h-8'} />
       <div className="leading-none">
         <div
           className={lg ? 'text-[32px]' : 'text-[12px] uppercase'}

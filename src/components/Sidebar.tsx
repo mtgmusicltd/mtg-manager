@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useApp, type AppPage } from '../store/AppContext'
-import { Icon } from './ui'
+import { Icon, Logo } from './ui'
 
 const IS_MAC = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform)
 
@@ -36,7 +36,7 @@ export default function Sidebar() {
 
       {/* Brand */}
       <div className="flex items-center gap-3 px-5 pb-5" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-        <img src="./logo.png" alt="" className="w-8 h-8 object-contain" draggable={false} />
+        <Logo className="w-8 h-8" />
         <div className="leading-none">
           <div
             className="text-[12px] font-semibold uppercase"
@@ -80,7 +80,7 @@ export default function Sidebar() {
             border: `1px solid ${deviceConnected ? 'rgba(200,211,0,0.3)' : 'var(--color-navy-border)'}`,
           }}
         >
-          <span className={`dot mt-1.5 ${deviceConnected ? 'dot-lime' : 'dot-muted'}`} />
+          <span className={`dot mt-1.5 ${deviceConnected ? 'dot-lime dot-pulse' : 'dot-muted'}`} />
           <div className="min-w-0">
             <p
               className="m-0 text-[13px] font-bold leading-tight"

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useApp } from '../store/AppContext'
-import { Icon, Modal, PageHeader, Section } from '../components/ui'
+import { Icon, Logo, Modal, PageHeader, Section } from '../components/ui'
 
 function maskKey(key: string): string {
   if (!key || key.length < 4) return key
@@ -121,7 +121,7 @@ export default function Settings() {
         <Section title="About">
           <div className="card p-5">
             <div className="flex items-center gap-4 mb-3">
-              <img src="./logo.png" alt="" className="w-11 h-11 object-contain" draggable={false} />
+              <Logo className="w-11 h-11" />
               <div>
                 <p className="m-0 font-bold text-base" style={{ fontFamily: 'var(--font)', color: 'var(--color-lime)' }}>
                   MTG Manager
@@ -141,7 +141,7 @@ export default function Settings() {
         <Section title="Support">
           <div className="card p-5">
             <p className="text-sm m-0 mb-2 leading-relaxed" style={{ color: 'var(--color-text-soft)' }}>
-              Stuck, or moving your licence to another computer? Contact the MTG team and we will help.
+              Stuck, or moving your licence to another computer? Contact MIDI Trumpet Guy and we will help.
             </p>
             <p className="text-xs m-0 leading-relaxed" style={{ color: 'var(--color-faint)' }}>
               Include your machine fingerprint and the last four characters of your licence key so we can find your order quickly.

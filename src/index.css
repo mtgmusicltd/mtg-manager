@@ -21,7 +21,7 @@
   --font: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --navy-900: #0C0B25; --navy-800: #13122E; --navy-700: #1B1A3E;
   --navy-600: #23224A; --navy-500: #34335F;
-  --lime: #C8D300; --amber: #E8A33D; --danger: #E05252; --azure: #00A3CB;
+  --lime: #E3FC02; --amber: #E8A33D; --danger: #E05252; --azure: #00A3CB;
   --text: #FFFFFF; --text-body: #C9CBD9; --text-muted: #8B8FA8;
   --radius: 6px; --radius-lg: 12px;
 
@@ -75,7 +75,7 @@ html, body, #root {
 h1, h2, h3, h4 { font-family: var(--font); font-weight: 700; line-height: 1.2; }
 button, input, select, textarea { font-family: var(--font); }
 
-::selection { background: rgba(200, 211, 0, 0.28); }
+::selection { background: rgba(227, 252, 2, 0.28); }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -125,7 +125,7 @@ input[type=number] { -moz-appearance: textfield; }
   .btn:disabled { cursor: not-allowed; opacity: 0.5; }
 
   .btn-primary { background: var(--color-lime); color: var(--color-navy); }
-  .btn-primary:hover:not(:disabled) { background: #d8e31a; }
+  .btn-primary:hover:not(:disabled) { background: #eeff3d; }
   .btn-primary:disabled { background: var(--color-navy-mid); border-color: var(--color-navy-border); color: var(--color-muted); opacity: 1; }
 
   .btn-secondary { background: var(--color-navy-mid); border-color: var(--color-navy-border); color: var(--color-text); }
@@ -221,7 +221,7 @@ input[type=number] { -moz-appearance: textfield; }
     white-space: nowrap;
     line-height: 1.4;
   }
-  .pill-lime { background: rgba(200, 211, 0, 0.12); color: var(--color-lime); border-color: rgba(200, 211, 0, 0.35); }
+  .pill-lime { background: rgba(227, 252, 2, 0.12); color: var(--color-lime); border-color: rgba(227, 252, 2, 0.35); }
   .pill-azure { background: rgba(0, 163, 203, 0.12); color: #3ec4e4; border-color: rgba(0, 163, 203, 0.35); }
   .pill-amber { background: rgba(232, 163, 61, 0.12); color: var(--color-amber); border-color: rgba(232, 163, 61, 0.35); }
   .pill-danger { background: rgba(224, 82, 82, 0.1); color: var(--color-danger); border-color: rgba(224, 82, 82, 0.35); }
@@ -246,7 +246,7 @@ input[type=number] { -moz-appearance: textfield; }
   }
   .notice-danger { border-color: rgba(224, 82, 82, 0.5); color: #f08a8a; }
   .notice-amber { border-color: rgba(232, 163, 61, 0.5); color: var(--color-amber); }
-  .notice-lime { border-color: rgba(200, 211, 0, 0.5); color: var(--color-lime); }
+  .notice-lime { border-color: rgba(227, 252, 2, 0.5); color: var(--color-lime); }
   .notice-info { }
 
   /* Modal */
@@ -322,6 +322,54 @@ input[type=number] { -moz-appearance: textfield; }
   }
   .key-tile:hover { background: var(--color-navy-panel); border-color: var(--color-muted); }
   .key-tile-active, .key-tile-active:hover { border-color: var(--color-lime); background: var(--color-navy-panel); }
+}
+
+@layer components {
+  /* Key card lit by a live key press on the Harmonizer */
+  .key-tile-live { border-color: var(--color-lime); transform: translateY(-2px); }
+  .key-tile-live .key-num { color: var(--color-lime); }
+
+  /* Bipolar voice bars: centre line, bars grow up or down from it */
+  .vbars { display: flex; align-items: stretch; gap: 6px; position: relative; }
+  .vbars::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--color-navy-border); }
+  .vbar { position: relative; flex: 1; min-width: 0; }
+  .vbar-fill {
+    position: absolute; left: 0; right: 0; height: 0;
+    background: var(--color-lime); border-radius: 2px;
+    transition: height 350ms cubic-bezier(0.22, 1, 0.36, 1), background-color 200ms ease;
+  }
+  .vbar-fill-up { bottom: 50%; }
+  .vbar-fill-down { top: 50%; }
+  .vbar-fill-off { background: var(--color-navy-border); }
+
+  /* Live dot pulse */
+  .dot-pulse { animation: dot-pulse 2s ease-in-out infinite; }
+
+  /* Firmware install steps */
+  .step-row { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--color-muted); transition: color 200ms ease; }
+  .step-row-active { color: var(--color-text); }
+  .step-row-done { color: var(--color-text-soft); }
+  .step-mark {
+    width: 18px; height: 18px; border-radius: 999px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid var(--color-navy-border); color: transparent;
+    transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease;
+  }
+  .step-row-done .step-mark { background: var(--color-lime); border-color: var(--color-lime); color: var(--color-navy); }
+  .step-row-active .step-mark { border-color: var(--color-lime); }
+  .progress-fill { transition: width 400ms cubic-bezier(0.22, 1, 0.36, 1); }
+}
+
+@keyframes dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(227, 252, 2, 0.45); }
+  50% { box-shadow: 0 0 0 5px rgba(227, 252, 2, 0); }
+}
+
+/* Reduced motion: no pulses, no lifts, no bar/progress animation */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  .key-tile-live { transform: none; }
+  .dot-pulse { animation: none; box-shadow: none; }
 }
 
 /* Below ~1000px the preset toolbar keeps icons and drops these labels (min window is 900px). */

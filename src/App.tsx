@@ -5,6 +5,7 @@ import Sidebar from './components/Sidebar'
 import PresetEditor from './pages/PresetEditor'
 import FirmwareUpdates from './pages/FirmwareUpdates'
 import Settings from './pages/Settings'
+import { Logo } from './components/ui'
 
 function AppShell() {
   const { licenceState, currentPage } = useApp()
@@ -13,7 +14,7 @@ function AppShell() {
     return (
       <div className="fixed inset-0 flex items-center justify-center" style={{ background: 'var(--color-navy)', WebkitAppRegion: 'drag' } as React.CSSProperties}>
         <div className="flex flex-col items-center gap-5">
-          <img src="./logo.png" alt="MTG" className="w-16 h-16 object-contain animate-pulse" draggable={false} />
+          <Logo className="w-16 h-16 animate-pulse" alt="MTG" />
           <p className="m-0 text-sm" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font)' }}>
             Checking your licence…
           </p>
