@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useApp } from '../store/AppContext'
 import { EULA_TEXT } from '../assets/eula'
+import { Icon, Wordmark } from './ui'
 
 type Step = 'eula' | 'activate'
 
+/*
+  First-run flow. Behaviour is unchanged from 1.0.8:
+    1. EULA is shown once and its acceptance persisted in config (`eulaAccepted`).
+    2. Licence key is normalised to XXXX-XXXX-XXXX-XXXX and activated via IPC.
+*/
 export default function LicenceSplash() {
   const { activateLicence } = useApp()
   const [step, setStep] = useState<Step>('eula')
@@ -56,136 +62,111 @@ export default function LicenceSplash() {
     setLoading(false)
   }
 
+  const keyComplete = key.length >= 19
+
   return (
-    <div className="fixed inset-0 flex flex-col items-center justify-center"
-      style={{ background: '#0C0B25' }}>
-
-      {/* Logo */}
-      <div className="mb-8 flex flex-col items-center gap-4">
-        <img src="./logo.png" alt="MTG Logo" className="w-24 h-24 object-contain" />
-        <div className="text-center">
-          <h1 className="text-3xl font-black tracking-tight" style={{ fontFamily: 'Barlow, sans-serif', color: '#C8D300' }}>
-            MTG MANAGER
-          </h1>
-          <p className="text-sm mt-1" style={{ color: '#7070a0', fontFamily: 'Bitter, serif' }}>
-            MIDI Harmonizer Software Manager
-          </p>
+    <div
+      className="fixed inset-0 flex flex-col items-center justify-center overflow-y-auto"
+      style={{
+        background: 'radial-gradient(900px 500px at 50% -10%, rgba(0,163,203,0.10), transparent 60%), var(--color-navy)',
+        WebkitAppRegion: 'drag',
+      } as React.CSSProperties}
+    >
+      <div className="w-full max-w-lg px-6 py-10 fade-up" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+        <div className="flex justify-center mb-8">
+          <Wordmark size="lg" />
         </div>
-      </div>
 
-      {/* ── EULA Step ── */}
-      {step === 'eula' && (
-        <div className="w-full max-w-lg rounded-xl p-6"
-          style={{ background: '#13122e', border: '1px solid #252450' }}>
-          <h2 className="text-base font-bold mb-1" style={{ fontFamily: 'Barlow, sans-serif', color: '#e8e8f0' }}>
-            End User Licence Agreement
-          </h2>
-          <p className="text-xs mb-4" style={{ color: '#7070a0' }}>
-            Please read and accept the licence agreement to continue.
-          </p>
+        {/* ── EULA step ── */}
+        {step === 'eula' && (
+          <div className="card p-6">
+            <h2 className="text-base font-bold m-0 mb-1" style={{ color: 'var(--color-text)' }}>
+              Before you start
+            </h2>
+            <p className="text-sm m-0 mb-4" style={{ color: 'var(--color-muted)' }}>
+              Please read and accept the licence agreement to continue.
+            </p>
 
-          {/* Scrollable EULA text */}
-          <div
-            className="rounded-lg p-4 mb-4 overflow-y-auto text-xs leading-relaxed whitespace-pre-wrap"
-            style={{
-              background: '#0C0B25',
-              border: '1px solid #1a1940',
-              color: '#7070a0',
-              maxHeight: '220px',
-              fontFamily: 'monospace',
-            }}>
-            {EULA_TEXT}
-          </div>
-
-          {/* Checkbox */}
-          <label className="flex items-start gap-3 cursor-pointer mb-5 select-none">
-            <input
-              type="checkbox"
-              checked={eulaChecked}
-              onChange={e => setEulaChecked(e.target.checked)}
-              className="mt-0.5 shrink-0"
-              style={{ accentColor: '#C8D300', width: 16, height: 16 }}
-            />
-            <span className="text-sm" style={{ color: '#a0a0c0' }}>
-              I have read and agree to the End User Licence Agreement
-            </span>
-          </label>
-
-          <button
-            onClick={handleAcceptEula}
-            disabled={!eulaChecked}
-            className="w-full py-3 rounded-lg font-bold text-sm uppercase tracking-widest transition-all"
-            style={{
-              fontFamily: 'Barlow, sans-serif',
-              background: eulaChecked ? '#C8D300' : '#252450',
-              color: eulaChecked ? '#0C0B25' : '#555580',
-              cursor: eulaChecked ? 'pointer' : 'not-allowed',
-              border: 'none',
-            }}>
-            I Agree — Continue
-          </button>
-        </div>
-      )}
-
-      {/* ── Activation Step ── */}
-      {step === 'activate' && (
-        <div className="w-full max-w-md rounded-xl p-8"
-          style={{ background: '#13122e', border: '1px solid #252450' }}>
-          <h2 className="text-lg font-bold mb-1" style={{ fontFamily: 'Barlow, sans-serif', color: '#e8e8f0' }}>
-            Activate Your Licence
-          </h2>
-          <p className="text-sm mb-6" style={{ color: '#7070a0' }}>
-            Enter the licence key included with your MTG MIDI Harmonizer purchase.
-          </p>
-
-          <form onSubmit={handleActivate} className="flex flex-col gap-4">
-            <div>
-              <label className="block text-xs font-semibold mb-2 uppercase tracking-widest"
-                style={{ color: '#7070a0', fontFamily: 'Barlow, sans-serif' }}>
-                Licence Key
-              </label>
-              <input
-                type="text"
-                value={key}
-                onChange={e => setKey(formatKey(e.target.value))}
-                placeholder="XXXX-XXXX-XXXX-XXXX"
-                maxLength={19}
-                spellCheck={false}
-                autoComplete="off"
-                className="w-full rounded-lg px-4 py-3 text-center text-lg font-mono tracking-widest outline-none transition-all"
-                style={{
-                  background: '#0C0B25',
-                  border: `1px solid ${error ? '#e05252' : '#252450'}`,
-                  color: '#C8D300',
-                  fontFamily: 'monospace',
-                }}
-                onFocus={e => (e.target.style.borderColor = '#C8D300')}
-                onBlur={e => (e.target.style.borderColor = error ? '#e05252' : '#252450')}
-              />
+            <div
+              className="rounded-lg p-4 mb-4 overflow-y-auto text-xs leading-relaxed whitespace-pre-wrap"
+              style={{
+                background: 'var(--color-navy)',
+                border: '1px solid var(--color-navy-border)',
+                color: 'var(--color-muted)',
+                maxHeight: 220,
+                fontFamily: 'var(--font-mono)',
+              }}
+            >
+              {EULA_TEXT}
             </div>
 
-            {error && (
-              <p className="text-sm text-center" style={{ color: '#e05252' }}>{error}</p>
-            )}
+            <label className="flex items-start gap-3 cursor-pointer mb-5 select-none">
+              <input
+                type="checkbox"
+                checked={eulaChecked}
+                onChange={e => setEulaChecked(e.target.checked)}
+                className="mt-0.5 shrink-0"
+                style={{ accentColor: 'var(--color-lime)', width: 16, height: 16 }}
+              />
+              <span className="text-sm" style={{ color: 'var(--color-text-soft)' }}>
+                I have read and agree to the End User Licence Agreement
+              </span>
+            </label>
 
-            <button
-              type="submit"
-              disabled={loading || key.length < 19}
-              className="w-full py-3 rounded-lg font-bold text-sm uppercase tracking-widest transition-all"
-              style={{
-                fontFamily: 'Barlow, sans-serif',
-                background: loading || key.length < 19 ? '#252450' : '#C8D300',
-                color: loading || key.length < 19 ? '#555580' : '#0C0B25',
-                cursor: loading || key.length < 19 ? 'not-allowed' : 'pointer',
-              }}>
-              {loading ? 'Activating…' : 'Activate'}
+            <button onClick={handleAcceptEula} disabled={!eulaChecked} className="btn btn-primary btn-lg w-full">
+              Agree and continue
             </button>
-          </form>
+          </div>
+        )}
 
+        {/* ── Activation step ── */}
+        {step === 'activate' && (
+          <div className="card p-7">
+            <h2 className="text-lg font-bold m-0 mb-1" style={{ color: 'var(--color-text)' }}>
+              Enter your licence key
+            </h2>
+            <p className="text-sm m-0 mb-6 leading-relaxed" style={{ color: 'var(--color-muted)' }}>
+              It was emailed to you when you bought your MTG MIDI Harmonizer. It looks like{' '}
+              <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-soft)' }}>XXXX-XXXX-XXXX-XXXX</span>.
+            </p>
 
-        </div>
-      )}
+            <form onSubmit={handleActivate} className="flex flex-col gap-4">
+              <div>
+                <label htmlFor="licence-key" className="eyebrow block mb-2">Licence key</label>
+                <input
+                  id="licence-key"
+                  type="text"
+                  value={key}
+                  onChange={e => { setKey(formatKey(e.target.value)); if (error) setError('') }}
+                  placeholder="XXXX-XXXX-XXXX-XXXX"
+                  maxLength={19}
+                  spellCheck={false}
+                  autoComplete="off"
+                  autoFocus
+                  className={`input input-mono text-center text-lg tracking-[0.18em] ${error ? 'input-error' : ''}`}
+                  style={{ color: 'var(--color-lime)', padding: '14px 16px' }}
+                />
+              </div>
 
+              {error && (
+                <div className="notice notice-danger flex items-start gap-2" role="alert">
+                  <Icon name="alert" size={15} className="mt-0.5 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <button type="submit" disabled={loading || !keyComplete} className="btn btn-primary btn-lg w-full">
+                {loading && <span className="spinner" />}
+                {loading ? 'Activating…' : 'Activate'}
+              </button>
+            </form>
+
+            <p className="text-xs m-0 mt-5 text-center leading-relaxed" style={{ color: 'var(--color-faint)' }}>
+              One key activates one computer. Moving to a new Mac? Remove the licence in Settings on the old one first.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
