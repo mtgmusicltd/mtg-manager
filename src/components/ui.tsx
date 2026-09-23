@@ -85,7 +85,7 @@ export function Steps({ items }: { items: ReactNode[] }) {
         <li key={i} className="flex items-start gap-3">
           <span
             className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold mt-px"
-            style={{ background: 'rgba(200,211,0,0.12)', color: 'var(--color-lime)', fontFamily: 'var(--font-heading)' }}
+            style={{ background: 'rgba(200,211,0,0.12)', color: 'var(--color-lime)', fontFamily: 'var(--font)' }}
           >
             {i + 1}
           </span>
@@ -159,8 +159,14 @@ export function Wordmark({ size = 'md' }: { size?: 'md' | 'lg' }) {
       <img src="./logo.png" alt="" className={`${lg ? 'w-14 h-14' : 'w-8 h-8'} object-contain`} draggable={false} />
       <div className="leading-none">
         <div
-          className={`font-black uppercase ${lg ? 'text-2xl' : 'text-[13px]'}`}
-          style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-lime)', letterSpacing: lg ? '0.08em' : '0.16em' }}
+          className={lg ? 'text-[32px]' : 'text-[12px] uppercase'}
+          style={{
+            fontFamily: 'var(--font)',
+            color: 'var(--color-lime)',
+            fontWeight: lg ? 800 : 600,
+            letterSpacing: lg ? '-1px' : '0.8px',
+            lineHeight: 1.02,
+          }}
         >
           MTG Manager
         </div>

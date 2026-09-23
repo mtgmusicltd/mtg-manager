@@ -39,8 +39,8 @@ export default function Sidebar() {
         <img src="./logo.png" alt="" className="w-8 h-8 object-contain" draggable={false} />
         <div className="leading-none">
           <div
-            className="text-[13px] font-black uppercase"
-            style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-lime)', letterSpacing: '0.16em' }}
+            className="text-[12px] font-semibold uppercase"
+            style={{ fontFamily: 'var(--font)', color: 'var(--color-lime)', letterSpacing: '0.8px' }}
           >
             MTG Manager
           </div>
@@ -84,7 +84,7 @@ export default function Sidebar() {
           <div className="min-w-0">
             <p
               className="m-0 text-[13px] font-bold leading-tight"
-              style={{ fontFamily: 'var(--font-heading)', color: deviceConnected ? 'var(--color-lime)' : 'var(--color-text-soft)' }}
+              style={{ fontFamily: 'var(--font)', color: deviceConnected ? 'var(--color-lime)' : 'var(--color-text-soft)' }}
             >
               {deviceConnected ? 'Harmonizer connected' : 'No Harmonizer found'}
             </p>
@@ -96,7 +96,7 @@ export default function Sidebar() {
       </div>
 
       {/* Version */}
-      <div className="px-5 pb-4 text-[11px]" style={{ color: 'var(--color-faint)', fontFamily: 'var(--font-heading)' }}>
+      <div className="px-5 pb-4 text-[11px]" style={{ color: 'var(--color-faint)', fontFamily: 'var(--font)' }}>
         {appVersion ? `Version ${appVersion}` : ' '}
       </div>
     </aside>

@@ -123,7 +123,7 @@ export default function Settings() {
             <div className="flex items-center gap-4 mb-3">
               <img src="./logo.png" alt="" className="w-11 h-11 object-contain" draggable={false} />
               <div>
-                <p className="m-0 font-black text-base" style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-lime)' }}>
+                <p className="m-0 font-bold text-base" style={{ fontFamily: 'var(--font)', color: 'var(--color-lime)' }}>
                   MTG Manager
                 </p>
                 <p className="m-0 text-xs" style={{ color: 'var(--color-muted)' }}>

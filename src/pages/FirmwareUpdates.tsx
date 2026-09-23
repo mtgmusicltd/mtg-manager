@@ -187,7 +187,7 @@ export default function FirmwareUpdates() {
             <Icon name={status.tone === 'muted' ? 'usb' : 'check'} size={18} />
           </div>
           <div className="min-w-0">
-            <p className="m-0 text-sm font-bold" style={{ fontFamily: 'var(--font-heading)', color: statusColour }}>
+            <p className="m-0 text-sm font-bold" style={{ fontFamily: 'var(--font)', color: statusColour }}>
               {status.title}
             </p>
             <p className="m-0 mt-0.5 text-xs leading-relaxed" style={{ color: 'var(--color-muted)' }}>
@@ -201,7 +201,7 @@ export default function FirmwareUpdates() {
           <div className="notice notice-lime mb-4 flex items-center gap-3">
             <Icon name="sparkle" size={18} className="shrink-0" />
             <div>
-              <p className="m-0 text-sm font-bold" style={{ fontFamily: 'var(--font-heading)' }}>
+              <p className="m-0 text-sm font-bold" style={{ fontFamily: 'var(--font)' }}>
                 Version {latestVersion?.version} is available
               </p>
               {latestVersion?.label && <p className="m-0 text-xs" style={{ color: 'var(--color-muted)' }}>{latestVersion.label}</p>}
@@ -261,7 +261,7 @@ export default function FirmwareUpdates() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-lg font-black" style={{ fontFamily: 'var(--font-heading)', color: 'var(--color-text)' }}>
+                        <span className="text-lg font-bold" style={{ fontFamily: 'var(--font)', color: 'var(--color-text)' }}>
                           v{item.version}
                         </span>
                         {isLatest && <span className="pill pill-lime">Latest</span>}

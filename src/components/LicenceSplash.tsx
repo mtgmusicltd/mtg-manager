@@ -50,7 +50,7 @@ export default function LicenceSplash() {
   async function handleActivate(e: React.FormEvent) {
     e.preventDefault()
     if (key.length < 19) {
-      setError('Please enter a complete licence key.')
+      setError('Enter the full licence key.')
       return
     }
     setLoading(true)
@@ -67,10 +67,7 @@ export default function LicenceSplash() {
   return (
     <div
       className="fixed inset-0 flex flex-col items-center justify-center overflow-y-auto"
-      style={{
-        background: 'radial-gradient(900px 500px at 50% -10%, rgba(0,163,203,0.10), transparent 60%), var(--color-navy)',
-        WebkitAppRegion: 'drag',
-      } as React.CSSProperties}
+      style={{ background: 'var(--color-navy)', WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
       <div className="w-full max-w-lg px-6 py-10 fade-up" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <div className="flex justify-center mb-8">
@@ -84,7 +81,7 @@ export default function LicenceSplash() {
               Before you start
             </h2>
             <p className="text-sm m-0 mb-4" style={{ color: 'var(--color-muted)' }}>
-              Please read and accept the licence agreement to continue.
+              Read and accept the licence agreement to continue.
             </p>
 
             <div
@@ -143,7 +140,7 @@ export default function LicenceSplash() {
                   spellCheck={false}
                   autoComplete="off"
                   autoFocus
-                  className={`input input-mono text-center text-lg tracking-[0.18em] ${error ? 'input-error' : ''}`}
+                  className={`input input-mono text-center text-lg tracking-[0.12em] ${error ? 'input-error' : ''}`}
                   style={{ color: 'var(--color-lime)', padding: '14px 16px' }}
                 />
               </div>

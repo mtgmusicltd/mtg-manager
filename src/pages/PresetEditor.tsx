@@ -51,28 +51,29 @@ function KeyTile({ visualPos, voices, selected, onClick }: KeyTileProps) {
     >
       <div className="flex items-center justify-between">
         <span
-          className="text-lg font-black leading-none"
-          style={{ fontFamily: 'var(--font-heading)', color: selected ? 'var(--color-lime)' : hasActive ? 'var(--color-text)' : 'var(--color-muted)' }}
+          className="text-lg font-extrabold leading-none"
+          style={{ fontFamily: 'var(--font)', color: selected ? 'var(--color-lime)' : hasActive ? 'var(--color-text)' : 'var(--color-muted)' }}
         >
           {userLabel}
         </span>
         {hasActive && (
           <span
             className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-            style={{ fontFamily: 'var(--font-heading)', background: 'rgba(200,211,0,0.12)', color: 'var(--color-lime)' }}
+            style={{ fontFamily: 'var(--font)', background: 'rgba(200,211,0,0.12)', color: 'var(--color-lime)' }}
+            title={`${activeVoices.length} active ${activeVoices.length === 1 ? 'voice' : 'voices'}`}
           >
-            {activeVoices.length} {activeVoices.length === 1 ? 'voice' : 'voices'}
+            {activeVoices.length}
           </span>
         )}
       </div>
 
-      {/* Voice values */}
-      <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+      {/* Voice values — one narrow column so tiles never wrap at the 900px minimum window */}
+      <div className="flex flex-col gap-px">
         {VOICE_LABELS.map((lbl, i) => {
           const active = voices[i] !== 0
           return (
-            <div key={lbl} className="flex items-center gap-1.5 text-xs">
-              <span style={{ color: 'var(--color-faint)', fontFamily: 'var(--font-heading)', fontWeight: 700 }}>{lbl}</span>
+            <div key={lbl} className="flex items-center gap-1.5 text-xs leading-tight">
+              <span className="w-3" style={{ color: 'var(--color-faint)', fontFamily: 'var(--font)', fontWeight: 700 }}>{lbl}</span>
               <span style={{ fontFamily: 'var(--font-mono)', color: active ? 'var(--color-lime)' : 'var(--color-faint)' }}>
                 {formatSemitones(voices[i])}
               </span>
@@ -139,7 +140,7 @@ function NumberField({
 }: { label: string; value: number; min: number; max: number; onChange: (raw: string) => void; hint?: string }) {
   return (
     <div>
-      <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-heading)' }}>
+      <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font)' }}>
         {label} <span style={{ color: 'var(--color-faint)', fontWeight: 400 }}>({min}–{max})</span>
       </label>
       <input
@@ -316,7 +317,7 @@ export default function PresetEditor() {
           value={selectedPresetIdx}
           onChange={e => setSelectedPresetIdx(Number(e.target.value))}
           className="select"
-          style={{ minWidth: 180 }}
+          style={{ minWidth: 150, maxWidth: 220 }}
         >
           {allPresets.map((p, i) => (
             <option key={i} value={i}>{p.name}</option>
@@ -344,11 +345,11 @@ export default function PresetEditor() {
 
         <button onClick={handleImport} className="btn btn-secondary btn-sm" title="Import presets from a file">
           <Icon name="upload" size={13} />
-          Import
+          <span className="hide-narrow">Import</span>
         </button>
         <button onClick={handleExport} className="btn btn-secondary btn-sm" title="Save a copy of these presets to a file">
           <Icon name="download" size={13} />
-          Export
+          <span className="hide-narrow">Export</span>
         </button>
 
         <button
@@ -432,8 +433,8 @@ export default function PresetEditor() {
 
         {/* Right panel — Voice editor + preset settings */}
         <aside
-          className="w-80 shrink-0 flex flex-col overflow-y-auto"
-          style={{ borderLeft: '1px solid var(--color-navy-border)', background: 'var(--color-navy-light)' }}
+          className="shrink-0 flex flex-col overflow-y-auto"
+          style={{ width: 272, borderLeft: '1px solid var(--color-navy-border)', background: 'var(--color-navy-light)' }}
         >
           <div className="p-5">
             <div className="flex items-center justify-between mb-4">
@@ -452,8 +453,8 @@ export default function PresetEditor() {
                 {VOICE_LABELS.map((lbl, i) => (
                   <div key={lbl} className="flex items-center gap-2">
                     <span
-                      className="w-6 text-sm font-black text-center"
-                      style={{ fontFamily: 'var(--font-heading)', color: selectedVoices[i] !== 0 ? 'var(--color-lime)' : 'var(--color-muted)' }}
+                      className="w-6 text-sm font-bold text-center"
+                      style={{ fontFamily: 'var(--font)', color: selectedVoices[i] !== 0 ? 'var(--color-lime)' : 'var(--color-muted)' }}
                     >
                       {lbl}
                     </span>
