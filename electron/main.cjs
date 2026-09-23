@@ -737,6 +737,24 @@ function createWindow() {
     },
   })
 
+  // Web MIDI for the Presets live view. Grants only the 'midi' permission, only
+  // for the app's own origin; every other permission keeps the default (allow).
+  const isAppOrigin = (url) => (isDev ? url.startsWith('http://localhost:5173') : url.startsWith('file://'))
+  const ses = win.webContents.session
+  ses.setPermissionRequestHandler((_wc, permission, callback, details) => {
+    if (permission === 'midi' || permission === 'midiSysex') {
+      callback(permission === 'midi' && isAppOrigin(details.requestingUrl || ''))
+      return
+    }
+    callback(true)
+  })
+  ses.setPermissionCheckHandler((_wc, permission, requestingOrigin) => {
+    if (permission === 'midi' || permission === 'midiSysex') {
+      return permission === 'midi' && isAppOrigin(requestingOrigin || '')
+    }
+    return true
+  })
+
   if (isDev) {
     win.loadURL('http://localhost:5173')
   } else {
