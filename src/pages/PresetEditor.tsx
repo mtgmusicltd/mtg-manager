@@ -5,6 +5,7 @@ import { Em, EmptyState, Icon, Lime, Modal, Steps } from '../components/ui'
 import VoiceBars from '../components/VoiceBars'
 import { useHarmonizerMidi } from '../hooks/useHarmonizerMidi'
 import { modeFromPresets, resolveLive } from '../lib/harmonizerMidi'
+import { KEY_COLOURS } from '../lib/keyColours'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -53,6 +54,8 @@ function KeyTile({ visualPos, voices, selected, live, onClick }: KeyTileProps) {
       aria-pressed={selected}
       aria-label={`Key ${userLabel}`}
     >
+      {/* LED colour of this physical key (same index as the firmware's KEY_ORDER) */}
+      <span className="key-led" style={{ background: KEY_COLOURS[visualPos] }} aria-hidden="true" />
       <div className="flex items-center justify-between">
         <span
           className="key-num text-lg font-extrabold leading-none"
@@ -463,7 +466,14 @@ export default function PresetEditor() {
             </div>
             {live ? (
               <div key={midi.press?.seq} className="fade-up">
-                <div className="page-title mb-3" style={{ fontSize: 28 }}>
+                <div className="page-title mb-3 flex items-center gap-3" style={{ fontSize: 28 }}>
+                  {liveVisualKeys.length > 0 && (
+                    <span
+                      className="dot"
+                      style={{ width: 12, height: 12, background: KEY_COLOURS[liveVisualKeys[0] - 1] }}
+                      title="Key colour on the Harmonizer"
+                    />
+                  )}
                   {liveVisualKeys.length > 0 ? `Key ${liveVisualKeys[0]}` : 'No match'}
                 </div>
                 <VoiceBars values={live.intervals} height={96} showLabels showValues />
