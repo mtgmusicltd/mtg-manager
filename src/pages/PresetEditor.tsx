@@ -6,6 +6,7 @@ import VoiceBars from '../components/VoiceBars'
 import { useHarmonizerMidi } from '../hooks/useHarmonizerMidi'
 import { modeFromPresets, resolveLive } from '../lib/harmonizerMidi'
 import { KEY_COLOURS } from '../lib/keyColours'
+import { matchPreset } from '../lib/presetMatch'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -179,6 +180,9 @@ export default function PresetEditor() {
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState('')
   const [showEncoderSettings, setShowEncoderSettings] = useState(false)
+  const [importHint, setImportHint] = useState(false)          // shown after Import until a save succeeds
+  const [autoNotice, setAutoNotice] = useState('')             // "Switched to … to match your Harmonizer"
+  const [matchState, setMatchState] = useState<{ status: string; candidates: number[] | null; index?: number; seq: number }>({ status: 'current', candidates: null, seq: 0 })
 
   const allPresets: Preset[] = presets?.presets ?? []
   const currentPreset: Preset | null = allPresets[selectedPresetIdx] ?? null
@@ -191,6 +195,28 @@ export default function PresetEditor() {
   )
   const liveHwKeys = useMemo(() => new Set(live?.hwKeys ?? []), [live])
   const liveVisualKeys = (live?.hwKeys ?? []).map(hw => KEY_ORDER.indexOf(hw) + 1).filter(n => n > 0).sort((a, b) => a - b)
+
+  // Infer which preset the Harmonizer is on (it never sends its preset index)
+  useEffect(() => {
+    if (!live || !midi.press) return
+    const r = matchPreset({
+      presets: allPresets, intervals: live.intervals, currentIdx: selectedPresetIdx,
+      candidates: matchState.candidates, unsaved: hasUnsavedChanges,
+    })
+    setMatchState({ ...r, seq: midi.press.seq })
+    if (r.status === 'switch' && r.index !== undefined) {
+      setSelectedPresetIdx(r.index)
+      setAutoNotice(`Switched to ${allPresets[r.index]?.name ?? 'preset'} to match your Harmonizer`)
+    }
+  }, [midi.press?.seq])
+
+  useEffect(() => {
+    if (!autoNotice) return
+    const t = setTimeout(() => setAutoNotice(''), 4000)
+    return () => clearTimeout(t)
+  }, [autoNotice])
+
+  const matchNames = (matchState.candidates ?? []).map(i => allPresets[i]?.name).filter(Boolean)
 
   // Reset selected key when switching preset
   useEffect(() => {
@@ -264,6 +290,7 @@ export default function PresetEditor() {
     setSaveStatus('saving')
     const result = await savePresetsToDevice()
     if (result.success) {
+      setImportHint(false)
       setSaveStatus('saved')
       setTimeout(() => setSaveStatus('idle'), 2000)
     } else {
@@ -283,6 +310,7 @@ export default function PresetEditor() {
     const result = await window.electronAPI.importPresets()
     if (result.success && result.data) {
       setPresets(result.data)
+      setImportHint(true)
     }
   }
 
@@ -381,6 +409,22 @@ export default function PresetEditor() {
         </button>
       </div>
 
+      {importHint && (
+        <div className="notice notice-amber mx-6 mt-4 flex items-start gap-2" role="status">
+          <Icon name="alert" size={15} className="mt-0.5 shrink-0" />
+          <span>
+            <strong>Importing needs bootloader mode.</strong> Double-tap the reset button on your Harmonizer, then Save to Harmonizer to write these presets.
+          </span>
+        </div>
+      )}
+
+      {autoNotice && (
+        <div className="notice notice-lime mx-6 mt-4 flex items-center gap-2 fade-up" role="status">
+          <Icon name="check" size={15} className="shrink-0" />
+          <span>{autoNotice}</span>
+        </div>
+      )}
+
       {saveStatus === 'error' && (
         <div className="notice notice-danger mx-6 mt-4 flex items-start gap-2" role="alert">
           <Icon name="alert" size={15} className="mt-0.5 shrink-0" />
@@ -443,8 +487,15 @@ export default function PresetEditor() {
 
             <p className="m-0 mt-5 text-xs leading-relaxed" style={{ color: 'var(--color-faint)' }}>
               Each key holds four voices, A to D, set in semitones from {VOICE_MIN} to +{VOICE_MAX}. A voice at 0 is off.
-              Importing a file replaces the presets shown here; the Harmonizer must be in bootloader mode (double-tap the reset button) before Import can write.
             </p>
+            <div
+              className="mt-4 px-4 py-3 text-sm leading-relaxed"
+              style={{ borderLeft: '3px solid var(--color-amber)', background: 'rgba(232,163,61,0.08)', borderRadius: '0 6px 6px 0', color: 'var(--color-text-soft)' }}
+              role="note"
+            >
+              <strong style={{ color: 'var(--color-amber)' }}>Importing needs bootloader mode.</strong>{' '}
+              Double-tap the reset button on your Harmonizer, then press Import. Importing a file replaces the presets shown here.
+            </div>
           </div>
         </div>
 
@@ -482,9 +533,27 @@ export default function PresetEditor() {
                     Keys {liveVisualKeys.join(', ')} share these voices, so any of them could be pressed.
                   </p>
                 )}
-                {liveVisualKeys.length === 0 && (
+                {liveVisualKeys.length === 0 && matchState.status === 'offer' && matchState.index !== undefined && (
+                  <div className="mt-3 flex flex-col gap-2">
+                    <p className="m-0 text-xs leading-relaxed" style={{ color: 'var(--color-amber)' }}>
+                      Your Harmonizer is on {allPresets[matchState.index]?.name}. You have unsaved edits here, so nothing was switched.
+                    </p>
+                    <button
+                      onClick={() => { setSelectedPresetIdx(matchState.index!); setMatchState({ status: 'current', candidates: null, seq: matchState.seq }) }}
+                      className="btn btn-secondary btn-sm self-start"
+                    >
+                      Switch to {allPresets[matchState.index]?.name}
+                    </button>
+                  </div>
+                )}
+                {liveVisualKeys.length === 0 && matchState.status === 'ambiguous' && (
                   <p className="m-0 mt-3 text-xs leading-relaxed" style={{ color: 'var(--color-amber)' }}>
-                    These voices do not match any key in this preset. Save your changes to the Harmonizer, or pick the preset it is playing.
+                    Matches {matchNames.join(', ')}. Press another key to tell them apart.
+                  </p>
+                )}
+                {liveVisualKeys.length === 0 && matchState.status === 'none' && (
+                  <p className="m-0 mt-3 text-xs leading-relaxed" style={{ color: 'var(--color-amber)' }}>
+                    These voices do not match any key in your presets. Save your changes to the Harmonizer, or pick the preset it is playing.
                   </p>
                 )}
               </div>
