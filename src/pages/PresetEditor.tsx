@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useApp } from '../store/AppContext'
 import type { Preset } from '../types/electron'
+import { Em, EmptyState, Icon, Lime, Modal, Steps } from '../components/ui'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -22,22 +23,11 @@ function makeEmptyPreset(): Preset {
   return { name: 'New Preset', keys, encoder_cc: 20, encoder_value: 64, encoder_sensitivity: 3 }
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function VoiceBadge({ value }: { value: number }) {
-  const active = value !== 0
-  return (
-    <span
-      className="text-xs font-mono px-1 rounded"
-      style={{
-        color: active ? '#C8D300' : '#454570',
-        background: active ? 'rgba(200,211,0,0.08)' : 'transparent',
-      }}
-    >
-      {value > 0 ? `+${value}` : value}
-    </span>
-  )
+function formatSemitones(v: number) {
+  return v > 0 ? `+${v}` : String(v)
 }
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 interface KeyTileProps {
   visualPos: number
@@ -49,44 +39,46 @@ interface KeyTileProps {
 
 function KeyTile({ visualPos, voices, selected, onClick }: KeyTileProps) {
   const userLabel = visualPos + 1
-  const hasActive = voices.some(v => v !== 0)
+  const activeVoices = voices.filter(v => v !== 0)
+  const hasActive = activeVoices.length > 0
 
   return (
     <button
       onClick={onClick}
-      className="rounded-xl p-3 flex flex-col gap-2 transition-all text-left w-full"
-      style={{
-        background: selected ? '#1a1940' : '#13122e',
-        border: `1px solid ${selected ? '#C8D300' : hasActive ? '#252450' : '#1a1940'}`,
-        outline: selected ? '1px solid rgba(200,211,0,0.3)' : 'none',
-        cursor: 'pointer',
-        minHeight: 90,
-      }}
+      className={`key-tile ${selected ? 'key-tile-active' : ''}`}
+      aria-pressed={selected}
+      aria-label={`Key ${userLabel}`}
     >
-      {/* Key number */}
       <div className="flex items-center justify-between">
         <span
-          className="text-base font-black"
-          style={{ fontFamily: 'Barlow, sans-serif', color: selected ? '#C8D300' : '#7070a0' }}
+          className="text-lg font-black leading-none"
+          style={{ fontFamily: 'var(--font-heading)', color: selected ? 'var(--color-lime)' : hasActive ? 'var(--color-text)' : 'var(--color-muted)' }}
         >
           {userLabel}
         </span>
         {hasActive && (
           <span
-            className="w-1.5 h-1.5 rounded-full"
-            style={{ background: selected ? '#C8D300' : '#454570' }}
-          />
+            className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+            style={{ fontFamily: 'var(--font-heading)', background: 'rgba(200,211,0,0.12)', color: 'var(--color-lime)' }}
+          >
+            {activeVoices.length} {activeVoices.length === 1 ? 'voice' : 'voices'}
+          </span>
         )}
       </div>
 
       {/* Voice values */}
-      <div className="flex flex-col gap-0.5">
-        {VOICE_LABELS.map((lbl, i) => (
-          <div key={lbl} className="flex items-center gap-1">
-            <span className="text-xs w-3" style={{ color: '#454570', fontFamily: 'Barlow, sans-serif' }}>{lbl}</span>
-            <VoiceBadge value={voices[i]} />
-          </div>
-        ))}
+      <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+        {VOICE_LABELS.map((lbl, i) => {
+          const active = voices[i] !== 0
+          return (
+            <div key={lbl} className="flex items-center gap-1.5 text-xs">
+              <span style={{ color: 'var(--color-faint)', fontFamily: 'var(--font-heading)', fontWeight: 700 }}>{lbl}</span>
+              <span style={{ fontFamily: 'var(--font-mono)', color: active ? 'var(--color-lime)' : 'var(--color-faint)' }}>
+                {formatSemitones(voices[i])}
+              </span>
+            </div>
+          )
+        })}
       </div>
     </button>
   )
@@ -122,13 +114,45 @@ function VoiceInput({ value, onChange }: VoiceInputProps) {
       onChange={e => setLocalValue(e.target.value)}
       onBlur={e => commit(e.target.value)}
       onKeyDown={e => { if (e.key === 'Enter') commit((e.target as HTMLInputElement).value) }}
-      className="flex-1 text-center rounded-lg py-1.5 text-sm font-mono outline-none"
-      style={{
-        background: '#0C0B25',
-        border: `1px solid ${value !== 0 ? '#252450' : '#1a1940'}`,
-        color: value !== 0 ? '#C8D300' : '#454570',
-      }}
+      className="input input-mono flex-1 text-center"
+      style={{ padding: '7px 8px', color: value !== 0 ? 'var(--color-lime)' : 'var(--color-muted)' }}
+      aria-label="Semitones"
     />
+  )
+}
+
+function StepButton({ label, onClick, disabled }: { label: '-' | '+'; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="btn btn-secondary btn-icon text-base"
+      aria-label={label === '+' ? 'Increase' : 'Decrease'}
+    >
+      {label === '+' ? '+' : '−'}
+    </button>
+  )
+}
+
+function NumberField({
+  label, value, min, max, onChange, hint,
+}: { label: string; value: number; min: number; max: number; onChange: (raw: string) => void; hint?: string }) {
+  return (
+    <div>
+      <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-heading)' }}>
+        {label} <span style={{ color: 'var(--color-faint)', fontWeight: 400 }}>({min}–{max})</span>
+      </label>
+      <input
+        type="number"
+        value={value}
+        min={min}
+        max={max}
+        onChange={e => onChange(e.target.value)}
+        className="input input-mono"
+        style={{ padding: '8px 10px' }}
+      />
+      {hint && <p className="m-0 mt-1 text-[11px]" style={{ color: 'var(--color-faint)' }}>{hint}</p>}
+    </div>
   )
 }
 
@@ -249,84 +273,23 @@ export default function PresetEditor() {
 
   if (!deviceConnected) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-6">
-        <div className="flex flex-col items-center gap-4">
-          {/* Pulsing connection ring */}
-          <div className="relative flex items-center justify-center">
-            <div
-              className="absolute w-24 h-24 rounded-full animate-ping"
-              style={{ background: 'rgba(200,211,0,0.08)' }}
-            />
-            <div
-              className="w-16 h-16 rounded-full flex items-center justify-center"
-              style={{ background: '#13122e', border: '2px solid #252450' }}
-            >
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#454570" strokeWidth="1.5">
-                <path d="M12 22V12M12 12L8 16M12 12L16 16" />
-                <rect x="4" y="2" width="16" height="8" rx="2" />
-              </svg>
-            </div>
-          </div>
-          <div className="text-center">
-            <h2
-              className="text-xl font-bold mb-2"
-              style={{ fontFamily: 'Barlow, sans-serif', color: '#e8e8f0' }}
-            >
-              Connect Your MTG MIDI Harmonizer
-            </h2>
-            <p className="text-sm mb-4" style={{ color: '#7070a0' }}>
-              To edit presets, connect the device in bootloader mode.
-            </p>
-            <div
-              className="inline-flex flex-col gap-2 text-left rounded-xl px-5 py-4"
-              style={{ background: '#13122e', border: '1px solid #252450' }}
-            >
-              <div className="flex items-start gap-3">
-                <span
-                  className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold mt-0.5"
-                  style={{ background: 'rgba(200,211,0,0.12)', color: '#C8D300', fontFamily: 'Barlow, sans-serif' }}
-                >1</span>
-                <p className="text-sm" style={{ color: '#a0a0c0' }}>
-                  <span style={{ color: '#e8e8f0', fontWeight: 600 }}>Double-tap slowly</span> the boot button on your device
-                </p>
-              </div>
-              <div className="flex items-start gap-3">
-                <span
-                  className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold mt-0.5"
-                  style={{ background: 'rgba(200,211,0,0.12)', color: '#C8D300', fontFamily: 'Barlow, sans-serif' }}
-                >2</span>
-                <p className="text-sm" style={{ color: '#a0a0c0' }}>
-                  Connect via USB — it will appear as{' '}
-                  <span style={{ color: '#C8D300' }}>CIRCUITPY</span>
-                </p>
-              </div>
-              <div className="flex items-start gap-3">
-                <span
-                  className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold mt-0.5"
-                  style={{ background: 'rgba(200,211,0,0.12)', color: '#C8D300', fontFamily: 'Barlow, sans-serif' }}
-                >3</span>
-                <p className="text-sm" style={{ color: '#a0a0c0' }}>
-                  Edit your presets, then{' '}
-                  <span style={{ color: '#e8e8f0', fontWeight: 600 }}>Save to Device</span>
-                </p>
-              </div>
-            </div>
-          </div>
+      <EmptyState
+        icon="usb"
+        title="Plug in your Harmonizer"
+        description="Presets live on the Harmonizer itself, so it needs to be connected before you can edit them."
+      >
+        <div className="card px-6 py-5 mb-6 w-full max-w-md">
+          <Steps items={[
+            <><Em>Double-tap slowly</Em> the boot button on your Harmonizer.</>,
+            <>Connect it over USB. It shows up as <Lime>CIRCUITPY</Lime> and this page opens on its own.</>,
+            <>Edit your presets, then choose <Em>Save to Harmonizer</Em>.</>,
+          ]} />
         </div>
-        <button
-          onClick={loadPresetsFromDevice}
-          className="px-5 py-2 rounded-lg text-sm font-semibold transition-all"
-          style={{
-            fontFamily: 'Barlow, sans-serif',
-            background: '#13122e',
-            border: '1px solid #252450',
-            color: '#7070a0',
-            cursor: 'pointer',
-          }}
-        >
-          Refresh
+        <button onClick={loadPresetsFromDevice} className="btn btn-secondary">
+          <Icon name="refresh" size={14} />
+          Check again
         </button>
-      </div>
+      </EmptyState>
     )
   }
 
@@ -338,331 +301,239 @@ export default function PresetEditor() {
       ? (currentPreset.keys[String(selectedHwKey)] ?? [0, 0, 0, 0])
       : [0, 0, 0, 0]
 
+  const saveLabel = saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : 'Save to Harmonizer'
+
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden min-w-0">
       {/* ── Toolbar ── */}
       <div
-        className="flex items-center gap-3 px-6 py-3 shrink-0"
-        style={{ borderBottom: '1px solid #1a1940' }}
+        className="flex items-center gap-2 px-6 shrink-0"
+        style={{ height: 64, borderBottom: '1px solid var(--color-navy-border)', background: 'var(--color-navy)' }}
       >
-        {/* Preset selector */}
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#7070a0', fontFamily: 'Barlow, sans-serif' }}>
-            Preset
-          </label>
-          <select
-            value={selectedPresetIdx}
-            onChange={e => setSelectedPresetIdx(Number(e.target.value))}
-            className="rounded-lg px-3 py-1.5 text-sm font-semibold outline-none"
-            style={{
-              background: '#13122e',
-              border: '1px solid #252450',
-              color: '#e8e8f0',
-              fontFamily: 'Barlow, sans-serif',
-              cursor: 'pointer',
-              minWidth: 160,
-            }}
-          >
-            {allPresets.map((p, i) => (
-              <option key={i} value={i}>{p.name}</option>
-            ))}
-          </select>
-        </div>
+        <label htmlFor="preset-select" className="eyebrow mr-1">Preset</label>
+        <select
+          id="preset-select"
+          value={selectedPresetIdx}
+          onChange={e => setSelectedPresetIdx(Number(e.target.value))}
+          className="select"
+          style={{ minWidth: 180 }}
+        >
+          {allPresets.map((p, i) => (
+            <option key={i} value={i}>{p.name}</option>
+          ))}
+        </select>
 
-        {/* Rename / Add / Delete */}
-        <button
-          onClick={startRename}
-          title="Rename preset"
-          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-          style={{ background: '#13122e', border: '1px solid #252450', color: '#7070a0', cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}
-        >
-          Rename
+        <button onClick={startRename} title="Rename preset" className="btn btn-ghost btn-icon" aria-label="Rename preset">
+          <Icon name="edit" size={15} />
         </button>
-        <button
-          onClick={addPreset}
-          title="Add new preset"
-          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-          style={{ background: '#13122e', border: '1px solid #252450', color: '#7070a0', cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}
-        >
-          + New
+        <button onClick={addPreset} title="New preset" className="btn btn-ghost btn-icon" aria-label="New preset">
+          <Icon name="plus" size={16} />
         </button>
         <button
           onClick={deletePreset}
           disabled={allPresets.length <= 1}
-          title="Delete preset"
-          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-          style={{
-            background: '#13122e',
-            border: '1px solid #252450',
-            color: allPresets.length <= 1 ? '#333360' : '#e05252',
-            cursor: allPresets.length <= 1 ? 'not-allowed' : 'pointer',
-            fontFamily: 'Barlow, sans-serif',
-          }}
+          title={allPresets.length <= 1 ? 'You need at least one preset' : 'Delete preset'}
+          className="btn btn-ghost btn-icon"
+          aria-label="Delete preset"
+          style={allPresets.length > 1 ? { color: 'var(--color-danger)' } : undefined}
         >
-          Delete
+          <Icon name="trash" size={15} />
         </button>
 
         <div className="flex-1" />
 
-        {/* Import / Export */}
-        <p
-          className="text-xs text-right shrink-0"
-          style={{ color: '#7070a0', maxWidth: 240, lineHeight: 1.35, fontFamily: 'Barlow, sans-serif' }}
-        >
-          The Harmonizer must be in bootloader mode (double-tap the reset button) before Import can write.
-        </p>
-        <button
-          onClick={handleImport}
-          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-          style={{ background: '#13122e', border: '1px solid #252450', color: '#7070a0', cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}
-        >
+        <button onClick={handleImport} className="btn btn-secondary btn-sm" title="Import presets from a file">
+          <Icon name="upload" size={13} />
           Import
         </button>
-        <button
-          onClick={handleExport}
-          className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-          style={{ background: '#13122e', border: '1px solid #252450', color: '#7070a0', cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}
-        >
+        <button onClick={handleExport} className="btn btn-secondary btn-sm" title="Save a copy of these presets to a file">
+          <Icon name="download" size={13} />
           Export
         </button>
 
-        {/* Save */}
         <button
           onClick={handleSave}
           disabled={!hasUnsavedChanges || saveStatus === 'saving'}
-          className="px-5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all"
-          style={{
-            fontFamily: 'Barlow, sans-serif',
-            background: saveStatus === 'saved' ? '#1a3a1a' : hasUnsavedChanges ? '#C8D300' : '#252450',
-            color: saveStatus === 'saved' ? '#4caf50' : hasUnsavedChanges ? '#0C0B25' : '#454570',
-            cursor: hasUnsavedChanges && saveStatus !== 'saving' ? 'pointer' : 'not-allowed',
-          }}
+          className="btn btn-primary ml-2"
+          style={saveStatus === 'saved' ? { background: 'rgba(200,211,0,0.15)', color: 'var(--color-lime)' } : undefined}
         >
-          {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? '✓ Saved' : 'Save to Device'}
+          {saveStatus === 'saving' && <span className="spinner" />}
+          {saveStatus === 'saved' && <Icon name="check" size={15} />}
+          {saveStatus === 'idle' && <Icon name="save" size={15} />}
+          {saveLabel}
         </button>
       </div>
 
       {saveStatus === 'error' && (
-        <div className="px-6 py-2 text-xs" style={{ background: 'rgba(224,82,82,0.1)', color: '#e05252' }}>
-          Save failed: {saveError}
+        <div className="notice notice-danger mx-6 mt-4 flex items-start gap-2" role="alert">
+          <Icon name="alert" size={15} className="mt-0.5 shrink-0" />
+          <span>Could not save: {saveError}</span>
         </div>
       )}
 
       {/* ── Rename modal ── */}
       {renaming && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(12,11,37,0.85)' }}>
-          <div className="rounded-xl p-6 w-80" style={{ background: '#13122e', border: '1px solid #252450' }}>
-            <h3 className="text-base font-bold mb-4" style={{ fontFamily: 'Barlow, sans-serif', color: '#e8e8f0' }}>
-              Rename Preset
-            </h3>
-            <input
-              autoFocus
-              value={renameValue}
-              onChange={e => setRenameValue(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenaming(false) }}
-              maxLength={40}
-              className="w-full rounded-lg px-3 py-2 text-sm outline-none mb-4"
-              style={{ background: '#0C0B25', border: '1px solid #C8D300', color: '#e8e8f0' }}
-            />
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setRenaming(false)}
-                className="px-4 py-2 rounded-lg text-sm"
-                style={{ background: '#252450', color: '#7070a0', cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}
-              >Cancel</button>
-              <button
-                onClick={commitRename}
-                className="px-4 py-2 rounded-lg text-sm font-bold"
-                style={{ background: '#C8D300', color: '#0C0B25', cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}
-              >Save</button>
-            </div>
+        <Modal title="Rename preset" onClose={() => setRenaming(false)}>
+          <input
+            autoFocus
+            value={renameValue}
+            onChange={e => setRenameValue(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenaming(false) }}
+            maxLength={40}
+            className="input mb-5"
+            aria-label="Preset name"
+          />
+          <div className="flex gap-2 justify-end">
+            <button onClick={() => setRenaming(false)} className="btn btn-secondary">Cancel</button>
+            <button onClick={commitRename} className="btn btn-primary">Rename</button>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* ── Main content ── */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Key Grid */}
-        <div className="flex-1 flex flex-col items-center justify-center p-8">
-          <div className="mb-4 flex items-center gap-3">
-            <span className="text-sm font-bold" style={{ fontFamily: 'Barlow, sans-serif', color: '#e8e8f0' }}>
-              {currentPreset?.name ?? '—'}
-            </span>
-            <span className="text-xs px-2 py-0.5 rounded" style={{ background: '#1a1940', color: '#7070a0', fontFamily: 'Barlow, sans-serif' }}>
-              Range {VOICE_MIN} to +{VOICE_MAX}
-            </span>
-          </div>
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* Key grid */}
+        <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-y-auto min-w-0">
+          <div className="w-full" style={{ maxWidth: 560 }}>
+            <div className="mb-4 flex items-baseline justify-between gap-3">
+              <h2 className="m-0 text-lg font-bold truncate" style={{ color: 'var(--color-text)' }}>
+                {currentPreset?.name ?? '—'}
+              </h2>
+              <span className="text-xs shrink-0" style={{ color: 'var(--color-faint)' }}>
+                Click a key to set its voices
+              </span>
+            </div>
 
-          {/* 4-col x 3-row grid */}
-          <div
-            className="grid gap-2"
-            style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', width: '100%', maxWidth: 560 }}
-          >
-            {Array.from({ length: 12 }, (_, visPos) => {
-              const hwKey = KEY_ORDER[visPos]
-              const voices: [number, number, number, number] =
-                currentPreset?.keys[String(hwKey)] ?? [0, 0, 0, 0]
-              return (
-                <KeyTile
-                  key={visPos}
-                  visualPos={visPos}
-                  hwKey={hwKey}
-                  voices={voices}
-                  selected={selectedKeyVisPos === visPos}
-                  onClick={() => setSelectedKeyVisPos(visPos === selectedKeyVisPos ? null : visPos)}
-                />
-              )
-            })}
-          </div>
+            {/* 4-col x 3-row grid, laid out to match the Harmonizer */}
+            <div className="grid gap-2.5" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+              {Array.from({ length: 12 }, (_, visPos) => {
+                const hwKey = KEY_ORDER[visPos]
+                const voices: [number, number, number, number] =
+                  currentPreset?.keys[String(hwKey)] ?? [0, 0, 0, 0]
+                return (
+                  <KeyTile
+                    key={visPos}
+                    visualPos={visPos}
+                    hwKey={hwKey}
+                    voices={voices}
+                    selected={selectedKeyVisPos === visPos}
+                    onClick={() => setSelectedKeyVisPos(visPos === selectedKeyVisPos ? null : visPos)}
+                  />
+                )
+              })}
+            </div>
 
-          <p className="text-xs mt-4" style={{ color: '#454570' }}>
-            Click a key to edit its voice values
-          </p>
+            <p className="m-0 mt-5 text-xs leading-relaxed" style={{ color: 'var(--color-faint)' }}>
+              Each key holds four voices, A to D, set in semitones from {VOICE_MIN} to +{VOICE_MAX}. A voice at 0 is off.
+              Importing a file replaces the presets shown here; the Harmonizer must be in bootloader mode (double-tap the reset button) before Import can write.
+            </p>
+          </div>
         </div>
 
-        {/* Right panel — Voice editor + Encoder settings */}
-        <div
-          className="w-72 shrink-0 flex flex-col overflow-y-auto"
-          style={{ borderLeft: '1px solid #1a1940' }}
+        {/* Right panel — Voice editor + preset settings */}
+        <aside
+          className="w-80 shrink-0 flex flex-col overflow-y-auto"
+          style={{ borderLeft: '1px solid var(--color-navy-border)', background: 'var(--color-navy-light)' }}
         >
-          {/* Voice editor */}
           <div className="p-5">
-            <h3
-              className="text-xs font-bold uppercase tracking-widest mb-4"
-              style={{ fontFamily: 'Barlow, sans-serif', color: '#7070a0' }}
-            >
-              {selectedKeyVisPos !== null ? `Key ${selectedKeyVisPos + 1} — Voices` : 'Select a Key'}
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="eyebrow m-0">
+                {selectedKeyVisPos !== null ? `Key ${selectedKeyVisPos + 1}` : 'Voices'}
+              </h3>
+              {selectedKeyVisPos !== null && selectedHwKey !== null && (
+                <button onClick={() => clearAllVoices(selectedHwKey)} className="btn btn-ghost btn-sm">
+                  Clear
+                </button>
+              )}
+            </div>
 
             {selectedKeyVisPos !== null && selectedHwKey !== null ? (
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2.5 fade-up">
                 {VOICE_LABELS.map((lbl, i) => (
-                  <div key={lbl} className="flex items-center gap-3">
+                  <div key={lbl} className="flex items-center gap-2">
                     <span
-                      className="w-6 text-sm font-bold text-center"
-                      style={{ fontFamily: 'Barlow, sans-serif', color: '#C8D300' }}
+                      className="w-6 text-sm font-black text-center"
+                      style={{ fontFamily: 'var(--font-heading)', color: selectedVoices[i] !== 0 ? 'var(--color-lime)' : 'var(--color-muted)' }}
                     >
                       {lbl}
                     </span>
-                    <div className="flex-1 flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          const next = clamp(selectedVoices[i] - 1, VOICE_MIN, VOICE_MAX)
-                          setVoice(selectedHwKey, i, next)
-                        }}
-                        className="w-7 h-7 rounded flex items-center justify-center text-sm font-bold transition-all"
-                        style={{ background: '#1a1940', color: '#7070a0', cursor: 'pointer', border: '1px solid #252450' }}
-                      >-</button>
+                    <div className="flex-1 flex items-center gap-1.5">
+                      <StepButton
+                        label="-"
+                        disabled={selectedVoices[i] <= VOICE_MIN}
+                        onClick={() => setVoice(selectedHwKey, i, clamp(selectedVoices[i] - 1, VOICE_MIN, VOICE_MAX))}
+                      />
                       <VoiceInput
                         value={selectedVoices[i]}
                         onChange={v => setVoice(selectedHwKey, i, v)}
                       />
-                      <button
-                        onClick={() => {
-                          const next = clamp(selectedVoices[i] + 1, VOICE_MIN, VOICE_MAX)
-                          setVoice(selectedHwKey, i, next)
-                        }}
-                        className="w-7 h-7 rounded flex items-center justify-center text-sm font-bold transition-all"
-                        style={{ background: '#1a1940', color: '#7070a0', cursor: 'pointer', border: '1px solid #252450' }}
-                      >+</button>
+                      <StepButton
+                        label="+"
+                        disabled={selectedVoices[i] >= VOICE_MAX}
+                        onClick={() => setVoice(selectedHwKey, i, clamp(selectedVoices[i] + 1, VOICE_MIN, VOICE_MAX))}
+                      />
                     </div>
                   </div>
                 ))}
-
-                <div className="mt-2 pt-3" style={{ borderTop: '1px solid #1a1940' }}>
-                  <p className="text-xs" style={{ color: '#454570' }}>
-                    Range: <span style={{ color: '#7070a0' }}>{VOICE_MIN} to +{VOICE_MAX}</span> semitones
-                    <br />
-                    0 = voice inactive / bypassed
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => clearAllVoices(selectedHwKey)}
-                  className="mt-1 px-3 py-1.5 rounded-lg text-xs font-semibold w-full"
-                  style={{ background: '#1a1940', border: '1px solid #252450', color: '#7070a0', cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}
-                >
-                  Clear All Voices
-                </button>
+                <p className="m-0 mt-2 text-xs leading-relaxed" style={{ color: 'var(--color-faint)' }}>
+                  Semitones above or below the note you play. 0 turns the voice off.
+                </p>
               </div>
             ) : (
-              <p className="text-sm" style={{ color: '#454570' }}>
-                Click any key in the grid to edit its semitone intervals for voices A, B, C, and D.
-              </p>
+              <div className="rounded-xl p-4 text-sm leading-relaxed" style={{ background: 'var(--color-navy)', border: '1px dashed var(--color-navy-raised)', color: 'var(--color-muted)' }}>
+                Pick a key in the grid to set how many semitones each of its four voices sits above or below the note you play.
+              </div>
             )}
           </div>
 
-          {/* Encoder settings */}
+          {/* Encoder / preset settings */}
           {currentPreset && (
-            <div className="p-5" style={{ borderTop: '1px solid #1a1940' }}>
+            <div className="p-5" style={{ borderTop: '1px solid var(--color-navy-border)' }}>
               <button
                 onClick={() => setShowEncoderSettings(v => !v)}
-                className="flex items-center justify-between w-full mb-3"
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+                className="flex items-center justify-between w-full bg-transparent border-0 p-0 cursor-pointer"
+                aria-expanded={showEncoderSettings}
               >
-                <h3
-                  className="text-xs font-bold uppercase tracking-widest"
-                  style={{ fontFamily: 'Barlow, sans-serif', color: '#7070a0' }}
+                <h3 className="eyebrow m-0">Encoder settings</h3>
+                <span
+                  className="flex transition-transform"
+                  style={{ color: 'var(--color-muted)', transform: showEncoderSettings ? 'rotate(180deg)' : undefined }}
                 >
-                  Preset Settings
-                </h3>
-                <span style={{ color: '#454570', fontSize: 10 }}>
-                  {showEncoderSettings ? '▲' : '▼'}
+                  <Icon name="chevron" size={14} />
                 </span>
               </button>
 
               {showEncoderSettings && (
-                <div className="flex flex-col gap-3">
-                  {/* Encoder CC */}
-                  <div>
-                    <label className="text-xs mb-1 block" style={{ color: '#7070a0', fontFamily: 'Barlow, sans-serif' }}>
-                      Encoder CC
-                    </label>
-                    <input
-                      type="number"
-                      value={currentPreset.encoder_cc}
-                      min={0}
-                      max={127}
-                      onChange={e => updatePreset(p => ({ ...p, encoder_cc: clamp(parseInt(e.target.value) || 0, 0, 127) }))}
-                      className="w-full rounded-lg px-3 py-1.5 text-sm font-mono outline-none"
-                      style={{ background: '#0C0B25', border: '1px solid #252450', color: '#e8e8f0' }}
-                    />
-                  </div>
-                  {/* Encoder Value */}
-                  <div>
-                    <label className="text-xs mb-1 block" style={{ color: '#7070a0', fontFamily: 'Barlow, sans-serif' }}>
-                      Encoder Value (0-127)
-                    </label>
-                    <input
-                      type="number"
-                      value={currentPreset.encoder_value}
-                      min={0}
-                      max={127}
-                      onChange={e => updatePreset(p => ({ ...p, encoder_value: clamp(parseInt(e.target.value) || 0, 0, 127) }))}
-                      className="w-full rounded-lg px-3 py-1.5 text-sm font-mono outline-none"
-                      style={{ background: '#0C0B25', border: '1px solid #252450', color: '#e8e8f0' }}
-                    />
-                  </div>
-                  {/* Encoder Sensitivity */}
-                  <div>
-                    <label className="text-xs mb-1 block" style={{ color: '#7070a0', fontFamily: 'Barlow, sans-serif' }}>
-                      Encoder Sensitivity (1-5)
-                    </label>
-                    <input
-                      type="number"
-                      value={currentPreset.encoder_sensitivity}
-                      min={1}
-                      max={5}
-                      onChange={e => updatePreset(p => ({ ...p, encoder_sensitivity: clamp(parseInt(e.target.value) || 1, 1, 5) }))}
-                      className="w-full rounded-lg px-3 py-1.5 text-sm font-mono outline-none"
-                      style={{ background: '#0C0B25', border: '1px solid #252450', color: '#e8e8f0' }}
-                    />
-                  </div>
+                <div className="flex flex-col gap-3 mt-4 fade-up">
+                  <NumberField
+                    label="Encoder CC"
+                    value={currentPreset.encoder_cc}
+                    min={0}
+                    max={127}
+                    onChange={raw => updatePreset(p => ({ ...p, encoder_cc: clamp(parseInt(raw) || 0, 0, 127) }))}
+                    hint="MIDI CC number the encoder sends."
+                  />
+                  <NumberField
+                    label="Encoder value"
+                    value={currentPreset.encoder_value}
+                    min={0}
+                    max={127}
+                    onChange={raw => updatePreset(p => ({ ...p, encoder_value: clamp(parseInt(raw) || 0, 0, 127) }))}
+                    hint="Starting value when this preset loads."
+                  />
+                  <NumberField
+                    label="Encoder sensitivity"
+                    value={currentPreset.encoder_sensitivity}
+                    min={1}
+                    max={5}
+                    onChange={raw => updatePreset(p => ({ ...p, encoder_sensitivity: clamp(parseInt(raw) || 1, 1, 5) }))}
+                    hint="1 is fine, 5 is fast."
+                  />
                 </div>
               )}
             </div>
           )}
-        </div>
+        </aside>
       </div>
     </div>
   )
