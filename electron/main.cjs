@@ -642,7 +642,7 @@ ipcMain.handle('download-and-flash', async (event, { key, version }) => {
     sendProgress('download', 55, 'Preparing device...')
     const writable = ensureCircuitPyWritable(targetPath)
     if (!writable) {
-      return { success: false, error: 'Cannot write to device. Please allow access when prompted.' }
+      return { success: false, error: MOUNT_MESSAGES['media-read-only'] }
     }
 
     // Step 3: Read device UID
