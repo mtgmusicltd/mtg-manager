@@ -14,7 +14,7 @@ function AppShell() {
       <div className="fixed inset-0 flex items-center justify-center" style={{ background: 'var(--color-navy)', WebkitAppRegion: 'drag' } as React.CSSProperties}>
         <div className="flex flex-col items-center gap-5">
           <img src="./logo.png" alt="MTG" className="w-16 h-16 object-contain animate-pulse" draggable={false} />
-          <p className="m-0 text-sm" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font-heading)' }}>
+          <p className="m-0 text-sm" style={{ color: 'var(--color-muted)', fontFamily: 'var(--font)' }}>
             Checking your licence…
           </p>
         </div>
