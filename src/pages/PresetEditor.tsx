@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useApp } from '../store/AppContext'
 import type { Preset } from '../types/electron'
 import { Em, EmptyState, ExternalLink, Icon, Lime, Modal, Steps } from '../components/ui'
@@ -8,6 +8,7 @@ import { useHarmonizerMidi } from '../hooks/useHarmonizerMidi'
 import { modeFromPresets, resolveLive } from '../lib/harmonizerMidi'
 import { KEY_COLOURS } from '../lib/keyColours'
 import { matchPreset } from '../lib/presetMatch'
+import { presetFromProgram } from '../lib/programChange'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -183,7 +184,7 @@ export default function PresetEditor() {
   const [showEncoderSettings, setShowEncoderSettings] = useState(false)
   const [importHint, setImportHint] = useState(false)          // shown after Import until a save succeeds
   const [autoNotice, setAutoNotice] = useState('')             // "Switched to … to match your Harmonizer"
-  const [matchState, setMatchState] = useState<{ status: string; candidates: number[] | null; index?: number; seq: number }>({ status: 'current', candidates: null, seq: 0 })
+  const [matchState, setMatchState] = useState<{ status: string; candidates: number[] | null; index?: number; seq: number; source?: 'press' | 'program' }>({ status: 'current', candidates: null, seq: 0 })
 
   const allPresets: Preset[] = presets?.presets ?? []
   const currentPreset: Preset | null = allPresets[selectedPresetIdx] ?? null
@@ -204,12 +205,36 @@ export default function PresetEditor() {
       presets: allPresets, intervals: live.intervals, currentIdx: selectedPresetIdx,
       candidates: matchState.candidates, unsaved: hasUnsavedChanges,
     })
-    setMatchState({ ...r, seq: midi.press.seq })
+    setMatchState({ ...r, seq: midi.press.seq, source: 'press' })
     if (r.status === 'switch' && r.index !== undefined) {
       setSelectedPresetIdx(r.index)
       setAutoNotice(`Switched to ${allPresets[r.index]?.name ?? 'preset'} to match your Harmonizer`)
     }
   }, [midi.press?.seq])
+
+  // Firmware 1.1.3+ tells us its preset index with Program Change. Same rules
+  // as above. It also arrives at start-up, possibly before presets are loaded,
+  // so hold on to it until they are.
+  const appliedProgramSeq = useRef(0)
+  useEffect(() => {
+    const pc = midi.program
+    if (!pc || appliedProgramSeq.current === pc.seq || allPresets.length === 0) return
+    appliedProgramSeq.current = pc.seq
+    const r = presetFromProgram({
+      program: pc.index, presetCount: allPresets.length,
+      currentIdx: selectedPresetIdx, unsaved: hasUnsavedChanges,
+    })
+    if (r.status === 'ignore' || r.index === undefined) return
+    if (r.status === 'offer') {
+      setMatchState(m => ({ status: 'offer', candidates: [r.index!], index: r.index, seq: m.seq, source: 'program' }))
+      return
+    }
+    setMatchState(m => ({ status: 'current', candidates: null, seq: m.seq, source: 'program' }))
+    if (r.status === 'switch') {
+      setSelectedPresetIdx(r.index)
+      setAutoNotice(`Switched to ${allPresets[r.index]?.name ?? 'preset'} to match your Harmonizer`)
+    }
+  }, [midi.program?.seq, allPresets.length])
 
   useEffect(() => {
     if (!autoNotice) return
@@ -537,19 +562,6 @@ export default function PresetEditor() {
                     Keys {liveVisualKeys.join(', ')} share these voices, so any of them could be pressed.
                   </p>
                 )}
-                {liveVisualKeys.length === 0 && matchState.status === 'offer' && matchState.index !== undefined && (
-                  <div className="mt-3 flex flex-col gap-2">
-                    <p className="m-0 text-xs leading-relaxed" style={{ color: 'var(--color-amber)' }}>
-                      Your Harmonizer is on {allPresets[matchState.index]?.name}. You have unsaved edits here, so nothing was switched.
-                    </p>
-                    <button
-                      onClick={() => { setSelectedPresetIdx(matchState.index!); setMatchState({ status: 'current', candidates: null, seq: matchState.seq }) }}
-                      className="btn btn-secondary btn-sm self-start"
-                    >
-                      Switch to {allPresets[matchState.index]?.name}
-                    </button>
-                  </div>
-                )}
                 {liveVisualKeys.length === 0 && matchState.status === 'ambiguous' && (
                   <p className="m-0 mt-3 text-xs leading-relaxed" style={{ color: 'var(--color-amber)' }}>
                     Matches {matchNames.join(', ')}. Press another key to tell them apart.
@@ -574,6 +586,21 @@ export default function PresetEditor() {
                   </p>
                 )}
               </>
+            )}
+            {/* Offer to switch: from Program Change (firmware 1.1.3+), or from a key press no key here explains */}
+            {matchState.status === 'offer' && matchState.index !== undefined && matchState.index !== selectedPresetIdx
+              && (matchState.source === 'program' || (live && liveVisualKeys.length === 0)) && (
+              <div className="mt-3 flex flex-col gap-2">
+                <p className="m-0 text-xs leading-relaxed" style={{ color: 'var(--color-amber)' }}>
+                  Your Harmonizer is on {allPresets[matchState.index]?.name}. You have unsaved edits here, so nothing was switched.
+                </p>
+                <button
+                  onClick={() => { setSelectedPresetIdx(matchState.index!); setMatchState({ status: 'current', candidates: null, seq: matchState.seq }) }}
+                  className="btn btn-secondary btn-sm self-start"
+                >
+                  Switch to {allPresets[matchState.index]?.name}
+                </button>
+              </div>
             )}
           </div>
 
