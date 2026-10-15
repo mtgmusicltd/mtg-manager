@@ -359,16 +359,15 @@ input[type=number] { -moz-appearance: textfield; }
   .vbar-fill-up { bottom: 50%; border-radius: 2px 2px 0 0; }
   .vbar-fill-down { top: 50%; border-radius: 0 0 2px 2px; }
   .vbar-fill-off { background: var(--color-navy-border); }
-  /* Cents (firmware 1.1.4+): a thin rounded bar inside the voice's bar, on its
+  /* Cents (firmware 1.1.4+): a thin azure bar inside the voice's bar, on its
      own scale (50 cents = half the box), up for sharp, down for flat. */
   .vbar-cents {
     position: absolute; left: 34%; right: 34%; height: 0;
-    background: #FFFFFF; border-radius: 2px;
+    background: var(--color-azure); border-radius: 2px;
     transition: height 350ms cubic-bezier(0.22, 1, 0.36, 1);
   }
   .vbar-cents-up { bottom: 50%; border-radius: 2px 2px 0 0; }
   .vbar-cents-down { top: 50%; border-radius: 0 0 2px 2px; }
-  .key-tile-live .vbar-cents { background: var(--color-navy); }
 
   /* Live dot pulse */
   .dot-pulse { animation: dot-pulse 2s ease-in-out infinite; }
