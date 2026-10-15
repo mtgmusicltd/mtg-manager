@@ -3,24 +3,34 @@
   line. Height = |semitones| / 12 of half the box (so an octave fills it;
   anything beyond is clamped). Height changes animate via CSS (350 ms
   ease-out), and prefers-reduced-motion switches the animation off.
+  Optional cents (firmware 1.1.4+) draw as a thin rounded bar inside each
+  voice's bar, on their own scale: 50 cents = half the box.
 */
 
 const LABELS = ['A', 'B', 'C', 'D']
 
 export default function VoiceBars({
-  values, height = 40, showLabels = false, showValues = false,
-}: { values: readonly number[]; height?: number; showLabels?: boolean; showValues?: boolean }) {
+  values, cents, height = 40, showLabels = false, showValues = false,
+}: { values: readonly number[]; cents?: readonly number[]; height?: number; showLabels?: boolean; showValues?: boolean }) {
   return (
     <div className="flex flex-col gap-1.5 w-full">
       <div className="vbars" style={{ height }} aria-hidden="true">
         {values.map((v, i) => {
           const pct = Math.min(1, Math.abs(v) / 12) * 50
+          const c = cents?.[i] ?? 0
+          const centsPct = Math.min(1, Math.abs(c) / 50) * 50
           return (
             <div key={i} className="vbar">
               <div
-                className={`vbar-fill ${v >= 0 ? 'vbar-fill-up' : 'vbar-fill-down'} ${v === 0 ? 'vbar-fill-off' : ''}`}
+                className={`vbar-fill ${v >= 0 ? 'vbar-fill-up' : 'vbar-fill-down'} ${v === 0 && c === 0 ? 'vbar-fill-off' : ''}`}
                 style={{ height: v === 0 ? 2 : `${pct}%` }}
               />
+              {c !== 0 && (
+                <div
+                  className={`vbar-cents ${c > 0 ? 'vbar-cents-up' : 'vbar-cents-down'}`}
+                  style={{ height: `max(3px, ${centsPct}%)` }}
+                />
+              )}
             </div>
           )
         })}

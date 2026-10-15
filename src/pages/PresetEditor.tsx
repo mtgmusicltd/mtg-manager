@@ -68,7 +68,7 @@ interface KeyTileProps {
 
 function KeyTile({ visualPos, voices, cents, selected, live, onClick }: KeyTileProps) {
   const userLabel = visualPos + 1
-  const activeVoices = voices.filter(v => v !== 0)
+  const activeVoices = voices.filter((v, i) => v !== 0 || cents[i] !== 0)
   const hasActive = activeVoices.length > 0
 
   return (
@@ -99,17 +99,16 @@ function KeyTile({ visualPos, voices, cents, selected, live, onClick }: KeyTileP
       </div>
 
       {/* Mini bipolar bars, A–D, with the semitone values underneath */}
-      <VoiceBars values={voices} height={34} />
+      <VoiceBars values={voices} cents={cents} height={34} />
       <div className="flex gap-1.5 hide-narrow">
         {voices.map((v, i) => (
           <span
             key={i}
             className="flex-1 min-w-0 text-center text-[11px] leading-none"
-            style={{ fontFamily: 'var(--font-mono)', color: v !== 0 ? 'var(--color-lime)' : 'var(--color-muted)' }}
-            title={`Voice ${VOICE_LABELS[i]}`}
+            style={{ fontFamily: 'var(--font-mono)', color: v !== 0 || cents[i] !== 0 ? 'var(--color-lime)' : 'var(--color-muted)' }}
+            title={`Voice ${VOICE_LABELS[i]}: ${formatSemitones(v)}${cents[i] !== 0 ? `, ${formatSemitones(cents[i])} cents` : ''}`}
           >
             {formatSemitones(v)}
-            {cents[i] !== 0 && <sup style={{ fontSize: 8, marginLeft: 1 }}>{formatSemitones(cents[i])}</sup>}
           </span>
         ))}
       </div>
