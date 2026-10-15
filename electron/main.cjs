@@ -411,6 +411,25 @@ ipcMain.handle('export-presets', async (_, jsonData) => {
   }
 })
 
+// HX Stomp preset shipped inside the app (electron/hx/, packed with electron/**).
+// Two Dual Pitch blocks: Interval 1/2 on CC 11-14, Cents 1/2 on CC 16-19
+// (Min -50 / Max +49.2, matching firmware 1.1.4's cents maths).
+ipcMain.handle('save-hx-preset', async () => {
+  const { filePath } = await dialog.showSaveDialog({
+    title: 'Save HX Stomp preset',
+    defaultPath: 'MTG MIDI Harmonizer.hlx',
+    filters: [{ name: 'HX preset', extensions: ['hlx'] }],
+  })
+  if (!filePath) return { success: false, error: 'Cancelled' }
+  try {
+    const data = fs.readFileSync(path.join(__dirname, 'hx', 'MTG MIDI Harmonizer.hlx'))
+    fs.writeFileSync(filePath, data)
+    return { success: true }
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
+})
+
 ipcMain.handle('import-presets', async () => {
   const { filePaths } = await dialog.showOpenDialog({
     title: 'Import Presets',

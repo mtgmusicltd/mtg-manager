@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   writePresets: (data) => ipcRenderer.invoke('write-presets', data),
   exportPresets: (data) => ipcRenderer.invoke('export-presets', data),
   importPresets: () => ipcRenderer.invoke('import-presets'),
+  saveHxPreset: () => ipcRenderer.invoke('save-hx-preset'),
   detectBootloader: () => ipcRenderer.invoke('detect-bootloader'),
   flashFirmware: (payload) => ipcRenderer.invoke('flash-firmware', payload),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
