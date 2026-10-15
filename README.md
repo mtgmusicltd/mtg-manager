@@ -69,8 +69,8 @@ not written; firmware 1.1.3 ignores the field).
 | D | 14 | 19 |
 
 - MTG mode (plugin 1.5.1+): cents CC = cents + 64, exact.
-- HX Stomp: each Cents controller is set to Min -50 / Max +50 (the HX limit);
-  the pad sends the nearest CC, within 0.39 cents.
+- HX Stomp: each Cents controller is set to Min -50 / Max +49.2 (the shipped
+  HX preset does this). 0 cents lands on 0.0; others within 0.39 cents.
 
 ### USB Detection
 Polls every 2s. macOS: /Volumes/CIRCUITPY. Linux: /media/<user>/CIRCUITPY.
