@@ -355,7 +355,47 @@ export default function FirmwareUpdates() {
             })}
           </div>
         )}
+
+        <HxPresetCard />
       </div>
+    </div>
+  )
+}
+
+// ─── HX Stomp preset (firmware 1.1.4+: cents on CC 16–19) ─────────────────────
+
+function HxPresetCard() {
+  const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle')
+
+  async function save() {
+    const r = await window.electronAPI?.saveHxPreset()
+    if (!r || r.error === 'Cancelled') return
+    setStatus(r.success ? 'saved' : 'error')
+  }
+
+  return (
+    <div className="card p-5 mt-6">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="eyebrow m-0 mb-2">Using an HX Stomp?</p>
+          <p className="m-0 text-sm leading-relaxed" style={{ color: 'var(--color-text-soft)' }}>
+            Get the latest HX preset. It's already set up for the intervals and for cents, so microtones work straight away.
+          </p>
+        </div>
+        <button onClick={save} className="btn btn-secondary shrink-0">
+          <Icon name="download" size={15} />
+          Save HX preset
+        </button>
+      </div>
+      <div className="mt-4">
+        <Steps items={[
+          <>Update your Harmonizer to firmware <Lime>1.1.4</Lime> or later (above).</>,
+          <>Open <Em>HX Edit</Em> and import <Lime>MTG MIDI Harmonizer.hlx</Lime>.</>,
+          <>Using your own preset? On each Dual Pitch block, assign <Em>Cents 1</Em> and <Em>Cents 2</Em> to MIDI CC <Lime>16, 17</Lime> (first block) and <Lime>18, 19</Lime> (second), Min <Lime>-50</Lime>, Max <Lime>49.2</Lime>.</>,
+        ]} />
+      </div>
+      {status === 'saved' && <div className="notice notice-lime mt-4">Saved. Import it in HX Edit.</div>}
+      {status === 'error' && <div className="notice notice-danger mt-4" role="alert">Couldn't save the preset. Try another folder.</div>}
     </div>
   )
 }

@@ -60,6 +60,7 @@ declare global {
       writePresets(data: PresetsJson): Promise<ApiResult>
       exportPresets(data: PresetsJson): Promise<ApiResult>
       importPresets(): Promise<ApiResult<PresetsJson>>
+      saveHxPreset(): Promise<ApiResult>
       detectBootloader(): Promise<DeviceStatus>
       flashFirmware(payload: { buffer: string; fileName: string }): Promise<ApiResult>
       getAppVersion(): Promise<string>
