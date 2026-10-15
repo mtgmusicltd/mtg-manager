@@ -56,6 +56,22 @@ Grid: 4 columns × 3 rows. Keys labelled 1-12 (user-facing).
 - Ableton Live: -24 to +24
 - Logic Pro X: -12 to +12
 
+### Cents (firmware 1.1.4+, Manager 1.2.0+)
+Each voice on each key can also have cents, -50 to +50, stored as an optional
+`"cents": {"<key>": [a, b, c, d]}` map beside `"keys"` (keys with no cents are
+not written; firmware 1.1.3 ignores the field).
+
+| Voice | Interval CC | Cents CC |
+|---|---|---|
+| A | 11 | 16 |
+| B | 12 | 17 |
+| C | 13 | 18 |
+| D | 14 | 19 |
+
+- MTG mode (plugin 1.5.1+): cents CC = cents + 64, exact.
+- HX Stomp: each Cents controller is set to Min -50 / Max +50 (the HX limit);
+  the pad sends the nearest CC, within 0.39 cents.
+
 ### USB Detection
 Polls every 2s. macOS: /Volumes/CIRCUITPY. Linux: /media/<user>/CIRCUITPY.
 Windows: scans drive letters for presets.json or code.py.

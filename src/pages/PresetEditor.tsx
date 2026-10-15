@@ -20,6 +20,12 @@ const VOICE_MAX = 24
 
 const VOICE_LABELS = ['A', 'B', 'C', 'D']
 
+// Firmware 1.1.4+: cents fine-tune per voice, sent on CC 16–19.
+const CENTS_MIN = -50
+const CENTS_MAX = 50
+const CENTS_CCS = [16, 17, 18, 19]
+const NO_CENTS: [number, number, number, number] = [0, 0, 0, 0]
+
 function clamp(v: number, min: number, max: number) {
   return Math.max(min, Math.min(max, v))
 }
@@ -34,20 +40,35 @@ function formatSemitones(v: number) {
   return v > 0 ? `+${v}` : String(v)
 }
 
+function keyCents(p: Preset | null, hwKey: number): [number, number, number, number] {
+  return p?.cents?.[String(hwKey)] ?? NO_CENTS
+}
+
+/** Copy of p with this key's cents set; all-zero keys and an empty map are dropped. */
+function withCents(p: Preset, hwKey: number, values: [number, number, number, number]): Preset {
+  const cents = { ...(p.cents ?? {}) }
+  if (values.every(v => v === 0)) delete cents[String(hwKey)]
+  else cents[String(hwKey)] = values
+  if (Object.keys(cents).length > 0) return { ...p, cents }
+  const { cents: _dropped, ...rest } = p
+  return rest
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 interface KeyTileProps {
   visualPos: number
   hwKey: number
   voices: [number, number, number, number]
+  cents: [number, number, number, number]
   selected: boolean
   live: boolean
   onClick: () => void
 }
 
-function KeyTile({ visualPos, voices, selected, live, onClick }: KeyTileProps) {
+function KeyTile({ visualPos, voices, cents, selected, live, onClick }: KeyTileProps) {
   const userLabel = visualPos + 1
-  const activeVoices = voices.filter(v => v !== 0)
+  const activeVoices = voices.filter((v, i) => v !== 0 || cents[i] !== 0)
   const hasActive = activeVoices.length > 0
 
   return (
@@ -78,14 +99,14 @@ function KeyTile({ visualPos, voices, selected, live, onClick }: KeyTileProps) {
       </div>
 
       {/* Mini bipolar bars, A–D, with the semitone values underneath */}
-      <VoiceBars values={voices} height={34} />
+      <VoiceBars values={voices} cents={cents} height={34} />
       <div className="flex gap-1.5 hide-narrow">
         {voices.map((v, i) => (
           <span
             key={i}
             className="flex-1 min-w-0 text-center text-[11px] leading-none"
-            style={{ fontFamily: 'var(--font-mono)', color: v !== 0 ? 'var(--color-lime)' : 'var(--color-muted)' }}
-            title={`Voice ${VOICE_LABELS[i]}`}
+            style={{ fontFamily: 'var(--font-mono)', color: v !== 0 || cents[i] !== 0 ? 'var(--color-lime)' : 'var(--color-muted)' }}
+            title={`Voice ${VOICE_LABELS[i]}: ${formatSemitones(v)}${cents[i] !== 0 ? `, ${formatSemitones(cents[i])} cents` : ''}`}
           >
             {formatSemitones(v)}
           </span>
@@ -100,9 +121,12 @@ function KeyTile({ visualPos, voices, selected, live, onClick }: KeyTileProps) {
 interface VoiceInputProps {
   value: number
   onChange: (v: number) => void
+  min?: number
+  max?: number
+  label?: string
 }
 
-function VoiceInput({ value, onChange }: VoiceInputProps) {
+function VoiceInput({ value, onChange, min = VOICE_MIN, max = VOICE_MAX, label = 'Semitones' }: VoiceInputProps) {
   const [localValue, setLocalValue] = useState(String(value))
 
   // Sync when external value changes (e.g. +/- buttons or clear)
@@ -112,7 +136,7 @@ function VoiceInput({ value, onChange }: VoiceInputProps) {
 
   function commit(raw: string) {
     const parsed = parseInt(raw, 10)
-    const clamped = isNaN(parsed) ? 0 : clamp(parsed, VOICE_MIN, VOICE_MAX)
+    const clamped = isNaN(parsed) ? 0 : clamp(parsed, min, max)
     onChange(clamped)
     setLocalValue(String(clamped))
   }
@@ -127,7 +151,7 @@ function VoiceInput({ value, onChange }: VoiceInputProps) {
       onKeyDown={e => { if (e.key === 'Enter') commit((e.target as HTMLInputElement).value) }}
       className="input input-mono flex-1 text-center"
       style={{ padding: '7px 8px', color: value !== 0 ? 'var(--color-lime)' : 'var(--color-muted)' }}
-      aria-label="Semitones"
+      aria-label={label}
     />
   )
 }
@@ -273,15 +297,23 @@ export default function PresetEditor() {
     })
   }
 
+  function setCents(hwKey: number, voiceIdx: number, value: number) {
+    updatePreset(p => {
+      const values = [...keyCents(p, hwKey)] as [number, number, number, number]
+      values[voiceIdx] = clamp(value, CENTS_MIN, CENTS_MAX)
+      return withCents(p, hwKey, values)
+    })
+  }
+
   function clearAllVoices(hwKey: number) {
-    // Single updatePreset call to reset all four voices atomically
-    updatePreset(p => ({
+    // Single updatePreset call to reset all four voices (and their cents) atomically
+    updatePreset(p => withCents({
       ...p,
       keys: {
         ...p.keys,
         [String(hwKey)]: [0, 0, 0, 0],
       },
-    }))
+    }, hwKey, NO_CENTS))
   }
 
   function addPreset() {
@@ -374,6 +406,8 @@ export default function PresetEditor() {
     selectedHwKey !== null && currentPreset
       ? (currentPreset.keys[String(selectedHwKey)] ?? [0, 0, 0, 0])
       : [0, 0, 0, 0]
+  const selectedCents = selectedHwKey !== null ? keyCents(currentPreset, selectedHwKey) : NO_CENTS
+  const encoderOnCents = currentPreset !== null && CENTS_CCS.includes(currentPreset.encoder_cc)
 
   const saveLabel = saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : 'Save to Harmonizer'
 
@@ -506,6 +540,7 @@ export default function PresetEditor() {
                     visualPos={visPos}
                     hwKey={hwKey}
                     voices={voices}
+                    cents={keyCents(currentPreset, hwKey)}
                     selected={selectedKeyVisPos === visPos}
                     live={liveHwKeys.has(hwKey)}
                     onClick={() => setSelectedKeyVisPos(visPos === selectedKeyVisPos ? null : visPos)}
@@ -619,7 +654,8 @@ export default function PresetEditor() {
             {selectedKeyVisPos !== null && selectedHwKey !== null ? (
               <div className="flex flex-col gap-2.5 fade-up">
                 {VOICE_LABELS.map((lbl, i) => (
-                  <div key={lbl} className="flex items-center gap-2">
+                  <div key={lbl} className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
                     <span
                       className="w-6 text-sm font-bold text-center"
                       style={{ fontFamily: 'var(--font)', color: selectedVoices[i] !== 0 ? 'var(--color-lime)' : 'var(--color-muted)' }}
@@ -643,9 +679,33 @@ export default function PresetEditor() {
                       />
                     </div>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 text-[10px] text-center" style={{ color: 'var(--color-faint)' }}>cents</span>
+                    <div className="flex-1 flex items-center gap-1.5" style={{ transform: 'scale(0.9)', transformOrigin: 'left center' }}>
+                      <StepButton
+                        label="-"
+                        disabled={selectedCents[i] <= CENTS_MIN}
+                        onClick={() => setCents(selectedHwKey, i, selectedCents[i] - 1)}
+                      />
+                      <VoiceInput
+                        value={selectedCents[i]}
+                        min={CENTS_MIN}
+                        max={CENTS_MAX}
+                        label={`Voice ${lbl} cents`}
+                        onChange={v => setCents(selectedHwKey, i, v)}
+                      />
+                      <StepButton
+                        label="+"
+                        disabled={selectedCents[i] >= CENTS_MAX}
+                        onClick={() => setCents(selectedHwKey, i, selectedCents[i] + 1)}
+                      />
+                    </div>
+                  </div>
+                  </div>
                 ))}
                 <p className="m-0 mt-2 text-xs leading-relaxed" style={{ color: 'var(--color-faint)' }}>
                   Semitones above or below the note you play. 0 turns the voice off.
+                  Cents nudge a voice sharp or flat, up to a quarter tone (needs firmware 1.1.4).
                 </p>
               </div>
             ) : (
@@ -680,7 +740,9 @@ export default function PresetEditor() {
                     min={0}
                     max={127}
                     onChange={raw => updatePreset(p => ({ ...p, encoder_cc: clamp(parseInt(raw) || 0, 0, 127) }))}
-                    hint="MIDI CC number the encoder sends."
+                    hint={encoderOnCents
+                      ? 'CC 16–19 carry the voices\' cents. Pick another number, or that voice\'s cents won\'t be sent.'
+                      : 'MIDI CC number the encoder sends.'}
                   />
                   <NumberField
                     label="Encoder value"
