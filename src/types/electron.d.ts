@@ -10,6 +10,8 @@ export interface Preset {
   encoder_cc: number
   encoder_value: number
   encoder_sensitivity: number
+  /** Firmware 1.1.4+: per-voice cents (−50..+50) by hardware key. Only keys with non-zero cents are stored. */
+  cents?: Record<string, [number, number, number, number]>
 }
 
 export interface DeviceStatus {
